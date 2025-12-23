@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # Smart Notes Agent Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smart-notes-agent
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - APP_NAME=Smart Notes Agent
+      - LOG_LEVEL=INFO
+    env_file:
+      - .env
+    volumes:
+      # Mount code for development (comment out for production)
+      - ./app:/app/app:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - smart-notes-network
+
+  # Frontend (optional - for serving static HTML)
+  frontend:
+    image: nginx:alpine
+    container_name: smart-notes-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - smart-notes-network
+
+networks:
+  smart-notes-network:
+    driver: bridge
+
+# Future: Add database service when migrating from in-memory storage
+# volumes:
+#   postgres_data:
+#
+# services:
+#   database:
+#     image: postgres:15-alpine
+#     container_name: smart-notes-db
+#     environment:
+#       POSTGRES_DB: notes_db
+#       POSTGRES_USER: notes_user
+#       POSTGRES_PASSWORD: ${DB_PASSWORD}
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     ports:
+#       - "5432:5432"
+#     networks:
+#       - smart-notes-network
+

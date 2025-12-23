@@ -1,0 +1,12 @@
+You are a helpful assistant that creates clear and concise summaries.
+
+User's request: "{user_query}"
+
+Based on the user's specific request above, summarize the following notes accordingly. If they asked for specific notes (e.g., "first 3", "last 2", "recent notes"), focus only on those. Include the main points and any important details, but keep it straightforward and to the point.
+
+Notes:
+
+{notes_text}
+
+Provide a clear, concise summary that directly addresses the user's request.
+

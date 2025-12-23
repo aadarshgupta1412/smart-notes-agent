@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Notes Agent - API Testing UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .note-card {
+            transition: all 0.2s;
+        }
+        .note-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .stream-message {
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .loading {
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg p-6 mb-8">
+            <h1 class="text-3xl font-bold mb-2">🤖 Smart Notes Agent</h1>
+            <p class="text-blue-100">API Testing Interface - Test all endpoints with a simple UI</p>
+            <div class="mt-4 flex items-center space-x-4">
+                <span class="bg-white/20 px-3 py-1 rounded-full text-sm" id="serverStatus">
+                    Checking server...
+                </span>
+                <span class="text-sm text-blue-100">Backend: <code class="bg-black/20 px-2 py-1 rounded">http://localhost:8000</code></span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Left Column: Notes CRUD -->
+            <div class="space-y-6">
+                <!-- Create Note -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800">📝 Create Note</h2>
+                    <div class="space-y-3">
+                        <input 
+                            type="text" 
+                            id="noteTitle" 
+                            placeholder="Note Title" 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                        <textarea 
+                            id="noteContent" 
+                            placeholder="Note Content" 
+                            rows="3"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        ></textarea>
+                        <button 
+                            onclick="createNote()" 
+                            class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold"
+                        >
+                            ➕ Create Note
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Notes List -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">📋 My Notes</h2>
+                        <button 
+                            onclick="loadNotes()" 
+                            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-semibold"
+                        >
+                            🔄 Refresh
+                        </button>
+                    </div>
+                    <div id="notesList" class="space-y-3">
+                        <p class="text-gray-400 text-center py-8">No notes yet. Create your first note!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: AI Agent -->
+            <div class="space-y-6">
+                <!-- Agent Query -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800">🤖 AI Agent</h2>
+                    <div class="space-y-3">
+                        <textarea 
+                            id="agentQuery" 
+                            placeholder="Ask me something... (e.g., 'list all my notes' or 'summarize my notes')" 
+                            rows="3"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        ></textarea>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button 
+                                onclick="askAgent(false)" 
+                                class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition font-semibold"
+                            >
+                                💬 Ask Agent
+                            </button>
+                            <button 
+                                onclick="askAgent(true)" 
+                                class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-semibold"
+                            >
+                                🎬 Stream Mode
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agent Response -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-bold mb-3 text-gray-800">Agent Response</h3>
+                    <div id="agentResponse" class="bg-gray-50 rounded-lg p-4 min-h-[200px] max-h-[400px] overflow-y-auto">
+                        <p class="text-gray-400 text-center py-8">Agent response will appear here...</p>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 border border-green-200">
+                    <h3 class="text-lg font-bold mb-3 text-gray-800">⚡ Quick Test Commands</h3>
+                    <div class="space-y-2">
+                        <button 
+                            onclick="quickTest('list all my notes')" 
+                            class="w-full bg-white text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-sm text-left border border-gray-200"
+                        >
+                            📋 List all my notes
+                        </button>
+                        <button 
+                            onclick="quickTest('summarize my notes')" 
+                            class="w-full bg-white text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-sm text-left border border-gray-200"
+                        >
+                            ✨ Summarize my notes
+                        </button>
+                        <button 
+                            onclick="quickTest('show me what I have')" 
+                            class="w-full bg-white text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-sm text-left border border-gray-200"
+                        >
+                            🔍 Show me what I have
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Status Footer -->
+        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-bold mb-3 text-gray-800">🔧 API Endpoints Status</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span class="text-gray-600">POST /notes</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span class="text-gray-600">GET /notes</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span class="text-gray-600">PUT /notes/{id}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span class="text-gray-600">DELETE /notes/{id}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 bg-purple-500 rounded-full"></span>
+                    <span class="text-gray-600">POST /agent/ask</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                    <span class="text-gray-600">POST /agent/ask/stream</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg hidden transition-all">
+        <span id="toastMessage"></span>
+    </div>
+
+    <!-- Edit Note Modal -->
+    <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">✏️ Edit Note</h3>
+                <button onclick="closeEditModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <input type="hidden" id="editNoteId">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Title</label>
+                    <input 
+                        type="text" 
+                        id="editNoteTitle" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Content</label>
+                    <textarea 
+                        id="editNoteContent" 
+                        rows="5"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    ></textarea>
+                </div>
+                <div class="flex space-x-3">
+                    <button 
+                        onclick="saveEditNote()" 
+                        class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold"
+                    >
+                        💾 Save Changes
+                    </button>
+                    <button 
+                        onclick="closeEditModal()" 
+                        class="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition font-semibold"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        // Check server health on load
+        async function checkServer() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                document.getElementById('serverStatus').innerHTML = '✅ Server Online';
+                document.getElementById('serverStatus').className = 'bg-green-500/30 px-3 py-1 rounded-full text-sm';
+            } catch (error) {
+                document.getElementById('serverStatus').innerHTML = '❌ Server Offline';
+                document.getElementById('serverStatus').className = 'bg-red-500/30 px-3 py-1 rounded-full text-sm';
+            }
+        }
+
+        // Toast notification
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.className = `fixed bottom-4 right-4 ${isError ? 'bg-red-600' : 'bg-gray-800'} text-white px-6 py-3 rounded-lg shadow-lg transition-all`;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
+        // Create Note
+        async function createNote() {
+            const title = document.getElementById('noteTitle').value;
+            const content = document.getElementById('noteContent').value;
+
+            if (!title || !content) {
+                showToast('Please fill in both title and content', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/notes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content })
+                });
+
+                if (response.ok) {
+                    const note = await response.json();
+                    showToast('✅ Note created successfully!');
+                    document.getElementById('noteTitle').value = '';
+                    document.getElementById('noteContent').value = '';
+                    loadNotes();
+                } else {
+                    showToast('Failed to create note', true);
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, true);
+            }
+        }
+
+        // Load Notes
+        async function loadNotes() {
+            try {
+                const response = await fetch(`${API_BASE}/notes`);
+                const notes = await response.json();
+                
+                const notesList = document.getElementById('notesList');
+                
+                if (notes.length === 0) {
+                    notesList.innerHTML = '<p class="text-gray-400 text-center py-8">No notes yet. Create your first note!</p>';
+                    return;
+                }
+
+                notesList.innerHTML = notes.map(note => {
+                    const noteData = JSON.stringify({id: note.id, title: note.title, content: note.content});
+                    return `
+                    <div class="note-card bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-gray-800">${escapeHtml(note.title)}</h3>
+                            <div class="flex space-x-2">
+                                <button 
+                                    onclick='openEditModal(${noteData})' 
+                                    class="text-blue-600 hover:text-blue-800 text-sm"
+                                    title="Edit"
+                                >
+                                    ✏️
+                                </button>
+                                <button 
+                                    onclick="deleteNote('${note.id}')" 
+                                    class="text-red-600 hover:text-red-800 text-sm"
+                                    title="Delete"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-2">${escapeHtml(note.content)}</p>
+                        <p class="text-xs text-gray-400">Created: ${new Date(note.created_at).toLocaleString()}</p>
+                    </div>
+                `}).join('');
+            } catch (error) {
+                showToast('Error loading notes: ' + error.message, true);
+            }
+        }
+
+        // Edit Note - Open Modal
+        function openEditModal(noteData) {
+            document.getElementById('editNoteId').value = noteData.id;
+            document.getElementById('editNoteTitle').value = noteData.title;
+            document.getElementById('editNoteContent').value = noteData.content;
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        // Close Edit Modal
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.getElementById('editNoteId').value = '';
+            document.getElementById('editNoteTitle').value = '';
+            document.getElementById('editNoteContent').value = '';
+        }
+
+        // Save Edited Note
+        async function saveEditNote() {
+            const id = document.getElementById('editNoteId').value;
+            const title = document.getElementById('editNoteTitle').value;
+            const content = document.getElementById('editNoteContent').value;
+
+            if (!title || !content) {
+                showToast('Please fill in both title and content', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/notes/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content })
+                });
+
+                if (response.ok) {
+                    showToast('✅ Note updated successfully!');
+                    closeEditModal();
+                    loadNotes();
+                } else {
+                    showToast('Failed to update note', true);
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, true);
+            }
+        }
+
+        // Delete Note
+        async function deleteNote(id) {
+            if (!confirm('Are you sure you want to delete this note?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/notes/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok || response.status === 204) {
+                    showToast('✅ Note deleted successfully!');
+                    loadNotes();
+                } else {
+                    showToast('Failed to delete note', true);
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, true);
+            }
+        }
+
+        // Ask Agent
+        async function askAgent(streaming = false) {
+            const query = document.getElementById('agentQuery').value;
+            const responseDiv = document.getElementById('agentResponse');
+
+            if (!query) {
+                showToast('Please enter a question', true);
+                return;
+            }
+
+            responseDiv.innerHTML = '<div class="flex items-center justify-center py-8"><div class="w-8 h-8 border-4 border-blue-600 rounded-full loading"></div></div>';
+
+            try {
+                if (!streaming) {
+                    // Standard request
+                    const response = await fetch(`${API_BASE}/agent/ask`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        responseDiv.innerHTML = `
+                            <div class="space-y-3">
+                                <div class="bg-blue-100 border-l-4 border-blue-600 p-3 rounded">
+                                    <p class="text-xs text-blue-600 font-semibold mb-1">Tools Used:</p>
+                                    <p class="text-sm text-gray-700">${data.tools_used.join(', ')}</p>
+                                </div>
+                                <div class="bg-green-50 border-l-4 border-green-600 p-3 rounded">
+                                    <p class="text-xs text-green-600 font-semibold mb-1">Answer:</p>
+                                    <p class="text-sm text-gray-700 whitespace-pre-wrap">${escapeHtml(data.answer)}</p>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        responseDiv.innerHTML = `<div class="bg-red-50 border border-red-200 p-3 rounded text-red-700">${escapeHtml(data.detail || 'Error processing request')}</div>`;
+                    }
+                } else {
+                    // Streaming request
+                    responseDiv.innerHTML = '<div class="space-y-2"></div>';
+                    const streamContainer = responseDiv.querySelector('div');
+
+                    const response = await fetch(`${API_BASE}/agent/ask/stream`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query })
+                    });
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n').filter(line => line.trim());
+
+                        for (const line of lines) {
+                            try {
+                                const data = JSON.parse(line);
+                                const colorMap = {
+                                    'agent_start': 'bg-indigo-50 border-indigo-300 text-indigo-800',
+                                    'reasoning': 'bg-blue-50 border-blue-300 text-blue-800',
+                                    'tool_start': 'bg-purple-50 border-purple-300 text-purple-800',
+                                    'tool_complete': 'bg-violet-50 border-violet-300 text-violet-800',
+                                    'agent_complete': 'bg-green-50 border-green-300 text-green-800',
+                                    'error': 'bg-red-50 border-red-300 text-red-800'
+                                };
+
+                                const messageDiv = document.createElement('div');
+                                messageDiv.className = `stream-message ${colorMap[data.type] || 'bg-gray-50 border-gray-300 text-gray-700'} border-l-4 p-3 rounded text-sm`;
+                                
+                                // Format content with metadata if available
+                                let content = `<div class="font-semibold mb-1">${data.type.replace(/_/g, ' ').toUpperCase()}</div>`;
+                                content += `<div>${escapeHtml(data.content)}</div>`;
+                                
+                                if (data.metadata) {
+                                    const meta = Object.entries(data.metadata)
+                                        .filter(([k, v]) => k !== 'timestamp' && v !== undefined)
+                                        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+                                        .join(' • ');
+                                    if (meta) {
+                                        content += `<div class="text-xs opacity-70 mt-1">${meta}</div>`;
+                                    }
+                                }
+                                
+                                messageDiv.innerHTML = content;
+                                streamContainer.appendChild(messageDiv);
+                                responseDiv.scrollTop = responseDiv.scrollHeight;
+                            } catch (e) {
+                                console.error('Error parsing stream:', e);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                responseDiv.innerHTML = `<div class="bg-red-50 border border-red-200 p-3 rounded text-red-700">Error: ${escapeHtml(error.message)}</div>`;
+                showToast('Error: ' + error.message, true);
+            }
+        }
+
+        // Quick Test
+        function quickTest(query) {
+            document.getElementById('agentQuery').value = query;
+            askAgent(false);
+        }
+
+        // Utility: Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        checkServer();
+        loadNotes();
+        setInterval(checkServer, 30000); // Check server every 30s
+    </script>
+</body>
+</html>
+
