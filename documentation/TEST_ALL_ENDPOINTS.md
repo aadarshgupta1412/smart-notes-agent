@@ -190,11 +190,14 @@ curl -N -X POST http://localhost:8000/agent/ask/stream \
 
 **Expected Response** (newline-delimited JSON):
 ```json
-{"type": "thought", "content": "Reading your question..."}
-{"type": "thought", "content": "Detected request to summarize notes."}
-{"type": "tool", "content": "Calling list_notes_tool..."}
-{"type": "tool", "content": "Sending data to Gemini for summarization..."}
-{"type": "final", "content": "Summary of your notes: ..."}
+{"type": "agent_start", "content": "🤖 Agent activated", "metadata": {...}}
+{"type": "reasoning", "content": "Analyzing your request...", "metadata": {...}}
+{"type": "reasoning", "content": "✓ Detected: Summarization request", "metadata": {...}}
+{"type": "tool_start", "content": "Fetching notes from repository...", "metadata": {...}}
+{"type": "tool_complete", "content": "Retrieved 3 note(s)", "metadata": {...}}
+{"type": "tool_start", "content": "🧠 Sending to Gemini AI...", "metadata": {...}}
+{"type": "tool_complete", "content": "✓ AI summarization complete", "metadata": {...}}
+{"type": "final", "content": "Summary of your notes:\n\n...", "metadata": {...}}
 ```
 
 ---

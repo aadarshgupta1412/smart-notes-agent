@@ -2,7 +2,7 @@
 
 An AI-powered note management backend built with FastAPI and Google Gemini API. Create notes, manage them with full CRUD operations, and leverage an intelligent agent that can list and summarize your notes using natural language.
 
-## ✨ Features
+## Features
 
 - **Full CRUD for Notes** - Create, Read, Update, Delete operations
 - **AI Agent** - Natural language queries powered by Google Gemini API
@@ -11,12 +11,19 @@ An AI-powered note management backend built with FastAPI and Google Gemini API. 
 - **Docker Support** - Complete containerization with docker-compose
 - **Testing UI** - Beautiful single-page interface for testing all endpoints
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Docker (Recommended)
 
 ```bash
-# Start everything
+# Verify Docker is installed
+docker --version
+docker-compose --version
+
+# Build and start everything (first time or after code changes)
+docker-compose up --build
+
+# Or just start (if already built)
 docker-compose up
 
 # Access the application
@@ -57,7 +64,7 @@ open frontend/index.html
 - API Docs: http://localhost:8000/docs
 - Frontend UI: http://localhost:3000
 
-## 📡 API Endpoints
+## API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -69,21 +76,31 @@ open frontend/index.html
 | `/agent/ask` | POST | Query agent (standard) |
 | `/agent/ask/stream` | POST | Query agent (streaming) |
 
-## 🧪 Quick Test
+## How to Test
 
 ```bash
-# Create a note
+# 1. Create a note
 curl -X POST http://localhost:8000/notes \
   -H "Content-Type: application/json" \
-  -d '{"title":"Test","content":"Hello World"}'
+  -d '{"title":"Project Alpha","content":"Deadline is next Friday. Need to finish API."}'
 
-# Ask the agent
+# 2. List all notes
+curl http://localhost:8000/notes
+
+# 3. Ask agent to summarize (standard)
 curl -X POST http://localhost:8000/agent/ask \
   -H "Content-Type: application/json" \
-  -d '{"query":"list my notes"}'
+  -d '{"query":"Can you summarize my notes?"}'
+
+# 4. Ask agent with streaming (see real-time thought process)
+curl -N -X POST http://localhost:8000/agent/ask/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Summarize these notes please"}'
 ```
 
-## 🏗️ Architecture
+**For complete testing guide with all endpoints, see:** [documentation/TEST_ALL_ENDPOINTS.md](documentation/TEST_ALL_ENDPOINTS.md)
+
+## Architecture
 
 **Clean Architecture with:**
 - **Repository Pattern** - Easy database migration (currently in-memory)
@@ -91,7 +108,7 @@ curl -X POST http://localhost:8000/agent/ask \
 - **Layered Design** - Router → Service → Repository
 - **Comprehensive Error Handling** - Graceful API failure handling with retries
 
-## 📚 Documentation
+## Documentation
 
 - **[Original Specification](documentation/smart-note-agent.md)** - Assignment requirements
 - **[API Testing Guide](documentation/TEST_ALL_ENDPOINTS.md)** - cURL examples for all endpoints
@@ -105,7 +122,7 @@ curl -X POST http://localhost:8000/agent/ask \
 - **Frontend:** Vanilla HTML/CSS/JS with Tailwind
 - **Deployment:** Docker & Docker Compose
 
-## 📝 Configuration
+## Configuration
 
 Create a `.env` file in the project root directory:
 
@@ -120,7 +137,7 @@ EOF
 
 **Important:** The `.env` file must be in the **project root** (`smart-notes-agent/`), not in subdirectories.
 
-## 🧪 Testing UI
+## Testing UI
 
 A beautiful testing interface is included at `frontend/index.html`:
 - Test all CRUD operations
@@ -128,7 +145,7 @@ A beautiful testing interface is included at `frontend/index.html`:
 - See streaming responses in real-time
 - No build process required
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 **Server won't start?**
 - Check `GEMINI_API_KEY` in `.env`
@@ -139,7 +156,7 @@ A beautiful testing interface is included at `frontend/index.html`:
 - Verify API key is valid
 - Check logs for specific errors
 
-## 📦 Project Structure
+## Project Structure
 
 ```
 smart-notes-agent/
@@ -155,7 +172,7 @@ smart-notes-agent/
 └── docker-compose.yml    # Docker Compose setup
 ```
 
-## 🧪 Tests
+## Tests
 
 Run the test suite:
 ```bash
@@ -164,10 +181,8 @@ pytest -v
 
 Tests cover: CRUD operations, Agent routing, Streaming, Repository Pattern. See [`tests/README.md`](tests/README.md) for details.
 
-## 📄 License
+## License
 
 Educational/Assessment Project
 
 ---
-
-**Built with ❤️ using FastAPI and Google Gemini AI**
