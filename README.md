@@ -69,19 +69,29 @@ open frontend/index.html
 | `/agent/ask` | POST | Query agent (standard) |
 | `/agent/ask/stream` | POST | Query agent (streaming) |
 
-## 🧪 Quick Test
+## 🧪 Quick Test Examples
 
 ```bash
-# Create a note
+# 1. Create a note
 curl -X POST http://localhost:8000/notes \
   -H "Content-Type: application/json" \
-  -d '{"title":"Test","content":"Hello World"}'
+  -d '{"title":"Project Alpha","content":"Deadline is next Friday. Need to finish API."}'
 
-# Ask the agent
+# 2. List all notes
+curl http://localhost:8000/notes
+
+# 3. Ask agent to summarize (standard)
 curl -X POST http://localhost:8000/agent/ask \
   -H "Content-Type: application/json" \
-  -d '{"query":"list my notes"}'
+  -d '{"query":"Can you summarize my notes?"}'
+
+# 4. Ask agent with streaming (see real-time thought process)
+curl -N -X POST http://localhost:8000/agent/ask/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Summarize these notes please"}'
 ```
+
+**📖 For complete testing guide with all endpoints, see:** [documentation/TEST_ALL_ENDPOINTS.md](documentation/TEST_ALL_ENDPOINTS.md)
 
 ## 🏗️ Architecture
 
@@ -169,5 +179,3 @@ Tests cover: CRUD operations, Agent routing, Streaming, Repository Pattern. See 
 Educational/Assessment Project
 
 ---
-
-**Built with ❤️ using FastAPI and Google Gemini AI**
