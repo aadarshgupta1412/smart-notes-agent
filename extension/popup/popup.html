@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Knowledge Hub</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- Login Screen -->
+  <div id="login-screen" class="screen">
+    <div class="logo">📚</div>
+    <h1>Knowledge Hub</h1>
+    <p class="subtitle">Save highlights &amp; bookmarks</p>
+    <button id="login-btn" class="btn btn-primary btn-full">
+      Sign in with Google
+    </button>
+  </div>
+
+  <!-- Main Screen -->
+  <div id="main-screen" class="screen hidden">
+    <div class="header">
+      <div class="header-left">
+        <span class="logo-small">📚</span>
+        <span class="user-name" id="user-name"></span>
+      </div>
+      <button id="logout-btn" class="btn-icon" title="Sign out">✕</button>
+    </div>
+
+    <!-- Content preview -->
+    <div id="content-preview" class="section">
+      <div class="label">Selected Text</div>
+      <div id="selected-text" class="preview-box"></div>
+    </div>
+
+    <div id="bookmark-notice" class="section hidden">
+      <div class="notice">
+        <span class="notice-icon">🔖</span>
+        No text selected — saving as bookmark
+      </div>
+    </div>
+
+    <!-- Page info -->
+    <div class="section">
+      <div class="label">Page</div>
+      <div class="page-info">
+        <div id="page-title" class="page-title"></div>
+        <div id="page-url" class="page-url"></div>
+      </div>
+    </div>
+
+    <!-- Folder selection -->
+    <div class="section">
+      <div class="label">Save to Folder</div>
+      <select id="folder-select" class="select">
+        <option value="">Select a folder...</option>
+      </select>
+    </div>
+
+    <!-- New folder -->
+    <div id="new-folder-section" class="section hidden">
+      <input
+        type="text"
+        id="new-folder-input"
+        class="input"
+        placeholder="New folder name..."
+      />
+    </div>
+
+    <button id="new-folder-toggle" class="btn btn-secondary btn-small">
+      + New Folder
+    </button>
+
+    <!-- Suggested folder (keyword-based stub) -->
+    <div id="suggestion" class="suggestion hidden">
+      💡 Suggested: <span id="suggested-folder"></span>
+    </div>
+
+    <!-- Save -->
+    <div class="actions">
+      <button id="save-btn" class="btn btn-primary btn-full" disabled>
+        Save
+      </button>
+    </div>
+
+    <div id="status" class="status hidden"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
