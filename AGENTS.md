@@ -46,3 +46,5 @@ cd webapp && npm install && npm run dev
 - The OpenAI client in `src/lib/ai.ts` is lazily initialized to avoid build-time errors when env vars are missing.
 - The chat streaming uses the Vercel AI SDK (`ai` + `@ai-sdk/openai`) with `streamText` for server-side streaming.
 - The extension communicates with the web app's API routes, authenticating via Bearer token from Supabase Auth.
+- Google OAuth redirect URI must be `https://<project-id>.supabase.co/auth/v1/callback` (set in GCP Credentials + Supabase Auth → Providers → Google).
+- The extension `manifest.json` must not have an empty `"key": ""` field — Chrome rejects it on "Load unpacked". It was removed; do not re-add it.
