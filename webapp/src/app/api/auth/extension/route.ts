@@ -20,6 +20,7 @@ export async function POST(request: Request) {
     });
 
     if (error) {
+      console.error("Supabase signInWithIdToken error:", error.message);
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
@@ -35,7 +36,8 @@ export async function POST(request: Request) {
         name: data.user?.user_metadata?.full_name,
       },
     });
-  } catch {
+  } catch (err) {
+    console.error("Extension auth error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

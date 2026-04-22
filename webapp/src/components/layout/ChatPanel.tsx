@@ -1,9 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Menu, Plus, Send, Loader2, Sparkles, X } from "lucide-react";
+import { Menu, Plus, Send, Loader2, Sparkles, X, MessageSquare, Zap, BookOpen } from "lucide-react";
 import PastChatsDrawer from "@/components/chat/PastChatsDrawer";
 import MentionDropdown from "@/components/chat/MentionDropdown";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import type { Chat, ChatFilters, Message } from "@/lib/types";
 
 interface Props {
@@ -11,6 +16,22 @@ interface Props {
   activeChatId: string | null;
   onChatChange: (chatId: string | null) => void;
 }
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-1 px-2">
+      <div className="typing-dot size-2 rounded-full bg-muted-foreground/60" />
+      <div className="typing-dot size-2 rounded-full bg-muted-foreground/60" />
+      <div className="typing-dot size-2 rounded-full bg-muted-foreground/60" />
+    </div>
+  );
+}
+
+const SUGGESTED_PROMPTS = [
+  "Summarize my recent highlights",
+  "What are the key insights from my bookmarks?",
+  "Find articles about AI",
+];
 
 export default function ChatPanel({ filters, activeChatId, onChatChange }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -71,10 +92,10 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
     return data.id;
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isStreaming) return;
+  const handleSend = async (messageOverride?: string) => {
+    const messageToSend = messageOverride || input.trim();
+    if (!messageToSend || isStreaming) return;
 
-    const userMessage = input.trim();
     setInput("");
     setShowMention(false);
 
@@ -88,7 +109,7 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
       chat_id: chatId,
       user_id: "",
       role: "user",
-      content: userMessage,
+      content: messageToSend,
       created_at: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, userMsg]);
@@ -110,7 +131,7 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: userMessage,
+          message: messageToSend,
           filters:
             effectiveFilters.folderIds?.length || effectiveFilters.sourceIds?.length
               ? effectiveFilters
@@ -142,7 +163,7 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
                 setMessages((prev) => {
                   const updated = [...prev];
                   const lastMsg = updated[updated.length - 1];
-                  if (lastMsg.role === "assistant") {
+                  if (lastMsg?.role === "assistant") {
                     updated[updated.length - 1] = {
                       ...lastMsg,
                       content: accumulated,
@@ -162,7 +183,7 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
       setMessages((prev) => {
         const updated = [...prev];
         const lastMsg = updated[updated.length - 1];
-        if (lastMsg.role === "assistant" && !lastMsg.content) {
+        if (lastMsg?.role === "assistant" && !lastMsg.content) {
           updated[updated.length - 1] = {
             ...lastMsg,
             content: "Sorry, something went wrong. Please try again.",
@@ -239,68 +260,141 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
   ];
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full relative bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
-        <button
-          onClick={handleNewChat}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          title="New chat"
-        >
-          <Plus className="w-4 h-4 text-gray-500" />
-        </button>
-        <h2 className="font-semibold text-gray-900 truncate">{chatTitle}</h2>
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          title="Past chats"
-        >
-          <Menu className="w-4 h-4 text-gray-500" />
-        </button>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/50 backdrop-blur-sm">
+        <Tooltip>
+          <TooltipTrigger>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleNewChat} 
+              className="size-9 hover:bg-primary/10 hover:text-primary"
+            >
+              <Plus className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>New chat</TooltipContent>
+        </Tooltip>
+        
+        <div className="flex items-center gap-2">
+          <MessageSquare className="size-4 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground truncate">{chatTitle}</h2>
+        </div>
+        
+        <Tooltip>
+          <TooltipTrigger>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDrawerOpen(true)}
+              className="size-9 hover:bg-accent"
+            >
+              <Menu className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Past chats</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 scrollbar-thin">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="p-4 rounded-2xl bg-indigo-50 mb-4">
-              <Sparkles className="w-8 h-8 text-indigo-500" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Ask AI</h3>
-            <p className="text-sm text-gray-500 mt-1 max-w-sm">
-              Chat with your saved knowledge. Use @folder or @source to scope the search.
-            </p>
-          </div>
-        )}
+      <ScrollArea className="flex-1">
+        <div className="px-4 py-6 max-w-3xl mx-auto">
+          <div className="flex flex-col gap-4">
+            {/* Empty state */}
+            {messages.length === 0 && (
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center animate-fade-in">
+                {/* Gradient icon container */}
+                <div className="relative mb-6">
+                  <div className="size-20 rounded-2xl gradient-primary flex items-center justify-center shadow-lg glow-primary">
+                    <Sparkles className="size-10 text-white" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 size-8 rounded-lg bg-purple-500 flex items-center justify-center shadow-md">
+                    <Zap className="size-4 text-white" />
+                  </div>
+                </div>
+                
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  Ask AI about your knowledge
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-md mb-8">
+                  Chat with your saved highlights and bookmarks. Use <kbd className="kbd">@folder</kbd> or <kbd className="kbd">@source</kbd> to scope your search.
+                </p>
 
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                msg.role === "user"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-800"
-              }`}
-            >
-              {msg.content || (
-                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-              )}
-            </div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
+                {/* Suggested prompts */}
+                <div className="flex flex-wrap justify-center gap-2">
+                  {SUGGESTED_PROMPTS.map((prompt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSend(prompt)}
+                      className="prompt-pill animate-fade-in"
+                      style={{ animationDelay: `${i * 0.1}s` }}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-      {/* Active mention filters */}
+            {/* Messages */}
+            {messages.map((msg, index) => (
+              <div
+                key={msg.id}
+                className={cn(
+                  "flex animate-message",
+                  msg.role === "user" ? "justify-end" : "justify-start"
+                )}
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                {msg.role === "assistant" && (
+                  <div className="size-8 rounded-lg gradient-primary flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                    <Sparkles className="size-4 text-white" />
+                  </div>
+                )}
+                
+                <div
+                  className={cn(
+                    "max-w-[80%] px-4 py-3 text-sm leading-relaxed",
+                    msg.role === "user"
+                      ? "chat-message-user"
+                      : "chat-message-ai"
+                  )}
+                >
+                  {msg.content ? (
+                    <div className={cn(
+                      "prose prose-sm max-w-none",
+                      msg.role === "user" && "prose-invert",
+                      isStreaming && msg.role === "assistant" && index === messages.length - 1 && "streaming-cursor"
+                    )}>
+                      {msg.content}
+                    </div>
+                  ) : (
+                    <TypingIndicator />
+                  )}
+                </div>
+
+                {msg.role === "user" && (
+                  <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center ml-3 mt-1 flex-shrink-0">
+                    <BookOpen className="size-4 text-primary" />
+                  </div>
+                )}
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+      </ScrollArea>
+
+      {/* Active mentions bar */}
       {activeMentions.length > 0 && (
-        <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 flex flex-wrap gap-1">
+        <div className="px-4 py-2 border-t border-border/50 bg-muted/30 flex flex-wrap gap-2 animate-fade-in">
+          <span className="text-xs text-muted-foreground self-center">Searching in:</span>
           {activeMentions.map((m) => (
-            <span
+            <Badge
               key={`${m.type}-${m.id}`}
-              className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full"
+              variant="secondary"
+              className="gap-1.5 pr-1.5 bg-primary/10 text-primary border-primary/20"
             >
               @{m.type}
               <button
@@ -317,16 +411,17 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
                     }));
                   }
                 }}
+                className="ml-0.5 rounded-full hover:bg-primary/20 p-0.5 transition-colors"
               >
-                <X className="w-3 h-3" />
+                <X className="size-3" />
               </button>
-            </span>
+            </Badge>
           ))}
         </div>
       )}
 
       {/* Input area */}
-      <div className="p-4 border-t border-gray-200 bg-white relative">
+      <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm relative">
         {showMention && (
           <div className="absolute bottom-full left-4 right-4 mb-2 z-10">
             <MentionDropdown
@@ -335,32 +430,58 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
             />
           </div>
         )}
-        <div className="flex items-end gap-2">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about your saved knowledge... (@ to scope)"
-            rows={1}
-            className="flex-1 resize-none px-4 py-3 bg-gray-100 rounded-xl border border-transparent focus:border-indigo-300 focus:bg-white focus:outline-none text-sm max-h-32 overflow-y-auto"
-            style={{ minHeight: "44px" }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isStreaming}
-            className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isStreaming ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </button>
+        
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-end gap-3">
+            <div className="flex-1 relative">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about your saved knowledge..."
+                rows={1}
+                className={cn(
+                  "w-full resize-none px-4 py-3 pr-12",
+                  "bg-muted/50 rounded-xl border border-border/50",
+                  "focus:border-primary/50 focus:bg-background focus:shadow-md",
+                  "focus:outline-none focus:ring-2 focus:ring-primary/20",
+                  "text-sm max-h-32 overflow-y-auto",
+                  "transition-all duration-200",
+                  "placeholder:text-muted-foreground"
+                )}
+                style={{ minHeight: "48px" }}
+              />
+              <div className="absolute right-3 bottom-3 text-xs text-muted-foreground">
+                <kbd className="kbd text-[10px]">@</kbd>
+              </div>
+            </div>
+            
+            <Button
+              size="icon"
+              onClick={() => handleSend()}
+              disabled={!input.trim() || isStreaming}
+              className={cn(
+                "size-12 rounded-xl transition-all duration-200",
+                input.trim() && !isStreaming
+                  ? "gradient-primary shadow-md hover:shadow-lg hover:scale-105"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {isStreaming ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : (
+                <Send className="size-5" />
+              )}
+            </Button>
+          </div>
+          
+          <p className="text-xs text-muted-foreground text-center mt-3">
+            Press <kbd className="kbd">Enter</kbd> to send, <kbd className="kbd">Shift + Enter</kbd> for new line
+          </p>
         </div>
       </div>
 
-      {/* Past chats drawer */}
       <PastChatsDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
