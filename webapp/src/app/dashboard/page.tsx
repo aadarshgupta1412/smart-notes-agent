@@ -15,16 +15,23 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-50">
-      <div className="w-[420px] min-w-[360px] border-r border-gray-200 bg-white flex flex-col">
+    <div className="h-screen flex overflow-hidden bg-background">
+      {/* Left Panel - Fixed width with responsive sizing */}
+      <div className="panel-left border-r border-border bg-sidebar flex flex-col relative">
         <LeftPanel
           key={`left-${refreshKey}`}
           onRefresh={handleRefresh}
           onFiltersChange={setChatFilters}
         />
+        
+        {/* Gradient divider accent */}
+        <div className="absolute top-0 right-0 bottom-0 w-px">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/20 to-transparent" />
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Right Panel - Chat area */}
+      <div className="flex-1 flex flex-col min-w-0 bg-background">
         <ChatPanel
           filters={chatFilters}
           activeChatId={activeChatId}

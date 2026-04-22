@@ -27,7 +27,8 @@
     "128": "icons/icon128.png"
   },
   "background": {
-    "service_worker": "background/service-worker.js"
+    "service_worker": "background/service-worker.js",
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -35,13 +36,5 @@
       "js": ["content/content.js"],
       "run_at": "document_idle"
     }
-  ],
-  "oauth2": {
-    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
-    "scopes": [
-      "openid",
-      "email",
-      "profile"
-    ]
-  }
+  ]
 }

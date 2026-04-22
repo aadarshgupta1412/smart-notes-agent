@@ -2,47 +2,569 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   KNOWLEDGE HUB DESIGN SYSTEM
+   Premium UI with Light/Dark Mode Support
+   ============================================ */
+
 @layer base {
+  /* ----------------------------------------
+     LIGHT MODE (Default)
+     ---------------------------------------- */
   :root {
-    --bg-primary: 249 250 251;
-    --bg-secondary: 255 255 255;
-    --text-primary: 17 24 39;
-    --text-secondary: 107 114 128;
-    --accent: 99 102 241;
+    /* Surface Colors - Layered backgrounds */
+    --surface-0: oklch(0.985 0.002 265);
+    --surface-1: oklch(1 0 0);
+    --surface-2: oklch(0.975 0.003 265);
+    --surface-3: oklch(0.955 0.005 265);
+    
+    /* Text Colors */
+    --text-primary: oklch(0.205 0.015 265);
+    --text-secondary: oklch(0.45 0.01 265);
+    --text-muted: oklch(0.556 0.01 265);
+    --text-inverse: oklch(0.985 0 0);
+    
+    /* Brand Colors - Indigo */
+    --indigo-50: oklch(0.968 0.022 277);
+    --indigo-100: oklch(0.935 0.045 277);
+    --indigo-200: oklch(0.885 0.085 277);
+    --indigo-300: oklch(0.785 0.145 277);
+    --indigo-400: oklch(0.665 0.2 277);
+    --indigo-500: oklch(0.585 0.233 277);
+    --indigo-600: oklch(0.511 0.24 277);
+    --indigo-700: oklch(0.457 0.24 277);
+    --indigo-800: oklch(0.385 0.2 277);
+    --indigo-900: oklch(0.325 0.155 277);
+    --indigo-950: oklch(0.245 0.115 277);
+    
+    /* Purple - AI/Chat accent */
+    --purple-50: oklch(0.975 0.02 295);
+    --purple-100: oklch(0.945 0.045 295);
+    --purple-200: oklch(0.895 0.085 295);
+    --purple-300: oklch(0.815 0.145 295);
+    --purple-400: oklch(0.715 0.195 295);
+    --purple-500: oklch(0.627 0.22 295);
+    --purple-600: oklch(0.558 0.225 295);
+    --purple-700: oklch(0.485 0.205 295);
+    
+    /* Amber - Highlights */
+    --amber-50: oklch(0.987 0.022 85);
+    --amber-100: oklch(0.962 0.055 85);
+    --amber-200: oklch(0.924 0.105 85);
+    --amber-300: oklch(0.879 0.155 85);
+    --amber-400: oklch(0.828 0.19 75);
+    --amber-500: oklch(0.769 0.188 70);
+    
+    /* Emerald - Success */
+    --emerald-50: oklch(0.979 0.021 166);
+    --emerald-100: oklch(0.950 0.052 166);
+    --emerald-500: oklch(0.696 0.17 162);
+    --emerald-600: oklch(0.596 0.145 163);
+    
+    /* Semantic Tokens */
+    --background: var(--surface-0);
+    --foreground: var(--text-primary);
+    --card: var(--surface-1);
+    --card-foreground: var(--text-primary);
+    --popover: var(--surface-1);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--indigo-600);
+    --primary-foreground: var(--text-inverse);
+    --primary-hover: var(--indigo-700);
+    --secondary: var(--surface-2);
+    --secondary-foreground: var(--text-primary);
+    --muted: var(--surface-2);
+    --muted-foreground: var(--text-muted);
+    --accent: var(--indigo-50);
+    --accent-foreground: var(--indigo-700);
+    --destructive: oklch(0.577 0.245 27);
+    --destructive-foreground: var(--text-inverse);
+    --border: oklch(0.915 0.006 265);
+    --input: oklch(0.915 0.006 265);
+    --ring: var(--indigo-500);
+    --radius: 0.5rem;
+    
+    /* Chat-specific tokens */
+    --chat-user-bg: var(--indigo-600);
+    --chat-user-text: var(--text-inverse);
+    --chat-ai-bg: var(--surface-2);
+    --chat-ai-text: var(--text-primary);
+    --chat-ai-border: var(--border);
+    
+    /* Gradient tokens */
+    --gradient-start: var(--indigo-500);
+    --gradient-end: var(--purple-500);
+    --gradient-surface: linear-gradient(135deg, var(--indigo-50) 0%, var(--purple-50) 100%);
+    
+    /* Shadow tokens */
+    --shadow-color: 265 30% 15%;
+    --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.04), 0 1px 3px hsl(var(--shadow-color) / 0.06);
+    --shadow-md: 0 4px 6px hsl(var(--shadow-color) / 0.04), 0 2px 4px hsl(var(--shadow-color) / 0.06);
+    --shadow-lg: 0 10px 15px hsl(var(--shadow-color) / 0.06), 0 4px 6px hsl(var(--shadow-color) / 0.04);
+    --shadow-xl: 0 20px 25px hsl(var(--shadow-color) / 0.08), 0 8px 10px hsl(var(--shadow-color) / 0.04);
+    --shadow-glow: 0 0 20px hsl(265 80% 60% / 0.15);
+    
+    /* Sidebar tokens */
+    --sidebar: var(--surface-1);
+    --sidebar-foreground: var(--text-primary);
+    --sidebar-primary: var(--indigo-600);
+    --sidebar-primary-foreground: var(--text-inverse);
+    --sidebar-accent: var(--indigo-50);
+    --sidebar-accent-foreground: var(--indigo-700);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--indigo-500);
+  }
+
+  /* ----------------------------------------
+     DARK MODE
+     ---------------------------------------- */
+  .dark {
+    /* Surface Colors - Layered backgrounds */
+    --surface-0: oklch(0.145 0.014 265);
+    --surface-1: oklch(0.185 0.016 265);
+    --surface-2: oklch(0.225 0.018 265);
+    --surface-3: oklch(0.265 0.02 265);
+    
+    /* Text Colors */
+    --text-primary: oklch(0.965 0.003 265);
+    --text-secondary: oklch(0.75 0.01 265);
+    --text-muted: oklch(0.6 0.01 265);
+    --text-inverse: oklch(0.145 0.014 265);
+    
+    /* Adjusted brand colors for dark mode */
+    --indigo-50: oklch(0.245 0.04 277);
+    --indigo-100: oklch(0.285 0.06 277);
+    --indigo-200: oklch(0.345 0.1 277);
+    --indigo-300: oklch(0.435 0.155 277);
+    --indigo-400: oklch(0.545 0.2 277);
+    --indigo-500: oklch(0.625 0.22 277);
+    --indigo-600: oklch(0.685 0.215 277);
+    --indigo-700: oklch(0.745 0.19 277);
+    
+    --purple-50: oklch(0.235 0.035 295);
+    --purple-100: oklch(0.285 0.055 295);
+    --purple-500: oklch(0.667 0.2 295);
+    --purple-600: oklch(0.728 0.18 295);
+    
+    --amber-50: oklch(0.265 0.045 85);
+    --amber-100: oklch(0.325 0.075 85);
+    --amber-400: oklch(0.828 0.19 75);
+    
+    --emerald-50: oklch(0.235 0.04 166);
+    --emerald-500: oklch(0.696 0.17 162);
+    
+    /* Semantic Tokens - Dark */
+    --background: var(--surface-0);
+    --foreground: var(--text-primary);
+    --card: var(--surface-1);
+    --card-foreground: var(--text-primary);
+    --popover: var(--surface-1);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--indigo-500);
+    --primary-foreground: var(--text-inverse);
+    --primary-hover: var(--indigo-400);
+    --secondary: var(--surface-2);
+    --secondary-foreground: var(--text-primary);
+    --muted: var(--surface-2);
+    --muted-foreground: var(--text-muted);
+    --accent: var(--indigo-50);
+    --accent-foreground: var(--indigo-400);
+    --destructive: oklch(0.704 0.191 22);
+    --destructive-foreground: var(--text-inverse);
+    --border: oklch(1 0 0 / 0.08);
+    --input: oklch(1 0 0 / 0.08);
+    --ring: var(--indigo-500);
+    
+    /* Chat-specific tokens - Dark */
+    --chat-user-bg: var(--indigo-600);
+    --chat-user-text: white;
+    --chat-ai-bg: var(--surface-2);
+    --chat-ai-text: var(--text-primary);
+    --chat-ai-border: var(--border);
+    
+    /* Gradient tokens - Dark */
+    --gradient-start: var(--indigo-600);
+    --gradient-end: var(--purple-600);
+    --gradient-surface: linear-gradient(135deg, oklch(0.185 0.03 277) 0%, oklch(0.185 0.03 295) 100%);
+    
+    /* Shadow tokens - Dark */
+    --shadow-color: 265 50% 5%;
+    --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.3), 0 1px 3px hsl(var(--shadow-color) / 0.4);
+    --shadow-md: 0 4px 6px hsl(var(--shadow-color) / 0.3), 0 2px 4px hsl(var(--shadow-color) / 0.4);
+    --shadow-lg: 0 10px 15px hsl(var(--shadow-color) / 0.35), 0 4px 6px hsl(var(--shadow-color) / 0.3);
+    --shadow-xl: 0 20px 25px hsl(var(--shadow-color) / 0.4), 0 8px 10px hsl(var(--shadow-color) / 0.3);
+    --shadow-glow: 0 0 30px hsl(265 80% 60% / 0.25);
+    
+    /* Sidebar tokens - Dark */
+    --sidebar: var(--surface-1);
+    --sidebar-foreground: var(--text-primary);
+    --sidebar-primary: var(--indigo-500);
+    --sidebar-primary-foreground: var(--text-inverse);
+    --sidebar-accent: var(--indigo-50);
+    --sidebar-accent-foreground: var(--indigo-400);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--indigo-500);
+  }
+
+  /* Base element styles */
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    @apply antialiased;
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  
+  /* Focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
 
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
 @layer utilities {
+  /* Gradient utilities */
+  .gradient-primary {
+    background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+  }
+  
+  .gradient-surface {
+    background: var(--gradient-surface);
+  }
+  
+  .gradient-text {
+    background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .gradient-border {
+    position: relative;
+    background: var(--card);
+    border-radius: var(--radius);
+  }
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  
+  /* Glow effects */
+  .glow-sm {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .glow-primary {
+    box-shadow: 0 0 20px oklch(from var(--primary) l c h / 0.3);
+  }
+  
+  /* Scrollbar styling */
   .scrollbar-thin {
     scrollbar-width: thin;
+    scrollbar-color: var(--muted-foreground) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: rgb(209 213 219);
+    background-color: oklch(from var(--muted-foreground) l c h / 0.3);
     border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(from var(--muted-foreground) l c h / 0.5);
+  }
+  
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Text utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  /* Backdrop blur */
+  .backdrop-blur-glass {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+  }
+  
+  /* Card hover lift effect */
+  .hover-lift {
+    @apply transition-all duration-200 ease-out;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  /* Streaming cursor for AI chat */
+  .streaming-cursor::after {
+    content: "▋";
+    animation: blink 1s step-end infinite;
+    margin-left: 2px;
+    color: var(--primary);
+  }
+  
+  /* Panel responsive widths */
+  .panel-left {
+    width: 420px;
+    min-width: 360px;
+  }
+  @media (min-width: 1440px) {
+    .panel-left {
+      width: 480px;
+      min-width: 420px;
+    }
   }
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@layer utilities {
+  /* Fade in */
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out forwards;
+  }
+  
+  /* Slide up */
+  .animate-slide-up {
+    animation: slide-up 0.25s ease-out forwards;
+  }
+  
+  /* Slide in from right */
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out forwards;
+  }
+  
+  /* Message appear (combined fade + slide) */
+  .animate-message {
+    animation: message-appear 0.3s ease-out forwards;
+  }
+  
+  /* Pulse subtle */
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s ease-in-out infinite;
+  }
+  
+  /* Shimmer for skeletons */
+  .animate-shimmer {
+    animation: shimmer 1.5s linear infinite;
+    background: linear-gradient(
+      90deg,
+      var(--muted) 0%,
+      oklch(from var(--muted) calc(l + 0.05) c h) 50%,
+      var(--muted) 100%
+    );
+    background-size: 200% 100%;
+  }
+  
+  /* Typing dots */
+  .typing-dot {
+    animation: typing-bounce 1.4s ease-in-out infinite;
+  }
+  .typing-dot:nth-child(1) { animation-delay: 0s; }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 }
 
-/* Markdown in chat messages */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { 
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from { 
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to { 
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes message-appear {
+  from { 
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-4px); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   COMPONENT STYLES
+   ============================================ */
+
+@layer components {
+  /* Chat message styles */
+  .chat-message-user {
+    @apply bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-3;
+    @apply max-w-[85%] ml-auto;
+  }
+  
+  .chat-message-ai {
+    @apply bg-muted text-foreground rounded-2xl rounded-bl-md px-4 py-3;
+    @apply max-w-[85%] mr-auto border border-border;
+  }
+  
+  /* Highlight quote block */
+  .highlight-block {
+    @apply border-l-4 border-amber-400 pl-4 py-3 rounded-r-lg;
+    background-color: var(--amber-50);
+  }
+  .dark .highlight-block {
+    background-color: oklch(from var(--amber-400) l c h / 0.1);
+  }
+  
+  /* AI summary gradient header */
+  .ai-summary-header {
+    @apply gradient-primary text-white px-4 py-2 rounded-t-lg font-medium text-sm;
+  }
+  
+  /* Suggested prompt pills */
+  .prompt-pill {
+    @apply px-3 py-1.5 rounded-full text-sm bg-muted hover:bg-accent;
+    @apply border border-border;
+    @apply transition-all duration-150 cursor-pointer;
+  }
+  .prompt-pill:hover {
+    @apply shadow-sm;
+    border-color: oklch(from var(--primary) l c h / 0.3);
+  }
+  
+  /* Keyboard shortcut badge */
+  .kbd {
+    @apply inline-flex items-center justify-center px-1.5 py-0.5 text-xs;
+    @apply bg-muted border border-border rounded font-mono;
+    @apply text-muted-foreground;
+  }
+}
+
+/* ============================================
+   PROSE / MARKDOWN STYLES
+   ============================================ */
+
+.prose {
+  @apply text-foreground leading-relaxed;
+}
+
 .prose pre {
-  background-color: rgb(243 244 246);
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  overflow-x: auto;
+  @apply bg-surface-3 p-4 rounded-lg overflow-x-auto my-4;
+  @apply border border-border;
 }
+
 .prose code {
-  font-size: 0.875rem;
+  @apply text-sm font-mono;
 }
+
+.prose :not(pre) > code {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm;
+}
+
 .prose a {
-  color: rgb(99 102 241);
-  text-decoration: underline;
+  @apply text-primary underline underline-offset-2 hover:text-primary-hover;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  @apply font-semibold tracking-tight text-foreground;
+}
+
+.prose ul, .prose ol {
+  @apply my-2 pl-6;
+}
+
+.prose li {
+  @apply my-1;
+}
+
+.prose blockquote {
+  @apply border-l-4 pl-4 italic text-muted-foreground;
+  border-color: oklch(from var(--primary) l c h / 0.3);
+}
+
+/* ============================================
+   DARK MODE TRANSITIONS
+   ============================================ */
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* Smooth theme transitions */
+html.transitioning,
+html.transitioning *,
+html.transitioning *::before,
+html.transitioning *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease !important;
 }
