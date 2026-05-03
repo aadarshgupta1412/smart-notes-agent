@@ -2,12 +2,19 @@
  * AI utilities - calls Python FastAPI backend for LLM operations
  */
 
-const BACKEND_URL = process.env.BACKEND_API_URL || "http://127.0.0.1:8001";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+const INTERNAL_KEY = process.env.INTERNAL_API_KEY || "dev-internal-key";
 
-export async function generateEmbedding(text: string): Promise<number[]> {
+export async function generateEmbedding(text: string, userId?: string): Promise<number[]> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Internal-Key": INTERNAL_KEY,
+  };
+  if (userId) headers["X-User-Id"] = userId;
+
   const response = await fetch(`${BACKEND_URL}/llm/embed`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ text: text.slice(0, 8000) }),
   });
 
@@ -20,10 +27,16 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   return data.embedding;
 }
 
-export async function generateSummary(content: string): Promise<string> {
+export async function generateSummary(content: string, userId?: string): Promise<string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Internal-Key": INTERNAL_KEY,
+  };
+  if (userId) headers["X-User-Id"] = userId;
+
   const response = await fetch(`${BACKEND_URL}/llm/summarize`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ content: content.slice(0, 6000), max_tokens: 200 }),
   });
 
@@ -44,11 +57,18 @@ export interface ChatMessage {
 export async function streamChat(
   messages: ChatMessage[],
   context: string = "",
-  tier: "fast" | "strong" = "fast"
+  tier: "fast" | "strong" = "fast",
+  userId?: string
 ): Promise<ReadableStream<Uint8Array>> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Internal-Key": INTERNAL_KEY,
+  };
+  if (userId) headers["X-User-Id"] = userId;
+
   const response = await fetch(`${BACKEND_URL}/llm/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
       context,
@@ -69,11 +89,12 @@ export async function streamChat(
   return response.body;
 }
 
-export const SYSTEM_PROMPT = `You are a personal knowledge assistant. Your role is to help the user understand and explore their saved web content (highlights and bookmarks).
+export const SYSTEM_PROMPT = `You are a personal knowledge assistant. You help users explore their saved web content (highlights, bookmarks) AND discover new information.
 
 Rules:
-- Use ONLY the provided source documents to answer questions. Do not make up information.
-- Cite which source (title and URL) each part of your answer is based on.
-- If the provided sources don't contain relevant information, say so honestly.
+- When relevant saved content is provided, prioritize it and cite sources (title + URL).
+- When no saved content matches the query, answer from your general knowledge. Be helpful and informative.
+- Clearly distinguish between information from saved sources vs general knowledge.
 - Be concise but thorough. Use markdown formatting for readability.
-- When listing sources, use bullet points with the source title and URL.`;
+- For saved content: use bullet points with source title and URL.
+- For general knowledge: provide accurate, educational answers that help the user learn.`;

@@ -2,20 +2,22 @@
 Service layer — business logic between routes and the LLM client.
 Routes call services. Services call LLMClient. LLMClient calls the provider.
 """
+
 import logging
 from typing import AsyncIterator
 from app.llm import LLMClient, ChatMessage, ChatResponse, Tier
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are a personal knowledge assistant. Your role is to help the user understand and explore their saved web content (highlights and bookmarks).
+SYSTEM_PROMPT = """You are a personal knowledge assistant. You help users explore their saved web content (highlights, bookmarks) AND discover new information.
 
 Rules:
-- Use ONLY the provided source documents to answer questions. Do not make up information.
-- Cite which source (title and URL) each part of your answer is based on.
-- If the provided sources don't contain relevant information, say so honestly.
+- When relevant saved content is provided, prioritize it and cite sources (title + URL).
+- When no saved content matches the query, answer from your general knowledge. Be helpful and informative.
+- Clearly distinguish between information from saved sources vs general knowledge.
 - Be concise but thorough. Use markdown formatting for readability.
-- When listing sources, use bullet points with the source title and URL."""
+- For saved content: use bullet points with source title and URL.
+- For general knowledge: provide accurate, educational answers that help the user learn."""
 
 SUMMARY_INSTRUCTION = "Summarize the following web content in 2-3 sentences, capturing the key points."
 
@@ -31,7 +33,9 @@ class ChatService:
         full = [ChatMessage(role="system", content=system)] + messages
         return await self.llm.chat(full, tier=tier)
 
-    async def stream_answer(self, messages: list[ChatMessage], context: str = "", tier: Tier = Tier.FAST) -> AsyncIterator[str]:
+    async def stream_answer(
+        self, messages: list[ChatMessage], context: str = "", tier: Tier = Tier.FAST
+    ) -> AsyncIterator[str]:
         system = SYSTEM_PROMPT
         if context:
             system += f"\n\n## User's saved content (use as context):\n\n{context}"

@@ -1,9 +1,5 @@
-"""
-Service Layer Package
-Contains business logic and AI integration
-"""
-from app.services.llm_service import LLMService
-from app.services.agent_service import AgentService
+"""Service Layer Package"""
 
-__all__ = ["LLMService", "AgentService"]
+from app.services.ai_service import ChatService, EmbeddingService, SummaryService
 
+__all__ = ["ChatService", "EmbeddingService", "SummaryService"]

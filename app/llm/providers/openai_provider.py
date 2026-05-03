@@ -17,7 +17,12 @@ async def chat(api_key: str, model: str, messages: list[ChatMessage], **kwargs) 
     return ChatResponse(
         content=choice.message.content or "",
         model=resp.model,
-        usage={"prompt_tokens": resp.usage.prompt_tokens, "completion_tokens": resp.usage.completion_tokens} if resp.usage else {},
+        usage={
+            "prompt_tokens": resp.usage.prompt_tokens,
+            "completion_tokens": resp.usage.completion_tokens,
+        }
+        if resp.usage
+        else {},
     )
 
 
