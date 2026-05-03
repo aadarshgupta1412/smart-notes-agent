@@ -11,15 +11,13 @@ Benefits:
 import logging
 from typing import Optional
 from app.repositories.in_memory import InMemoryNoteRepository
-from app.services.llm_service import LLMService
-from app.services.agent_service import AgentService
 
 logger = logging.getLogger(__name__)
 
 # Singleton instances (initialized at startup, not on-demand)
 _repository_instance: Optional[InMemoryNoteRepository] = None
-_llm_service_instance: Optional[LLMService] = None
-_agent_service_instance: Optional[AgentService] = None
+_llm_service_instance = None
+_agent_service_instance = None
 
 
 def initialize_services():
@@ -43,14 +41,16 @@ def initialize_services():
         
         # Initialize LLM service (legacy Gemini — optional, skipped if no key)
         try:
+            from app.services.llm_service import LLMService
             _llm_service_instance = LLMService()
             logger.info("✓ LLM service initialized")
-        except (ValueError, ConnectionError) as e:
-            logger.warning(f"Legacy LLM service skipped (no GEMINI_API_KEY): {e}")
+        except (ValueError, ConnectionError, ImportError) as e:
+            logger.warning(f"Legacy LLM service skipped: {e}")
             _llm_service_instance = None
         
         # Initialize Agent service (depends on repository and LLM service)
         if _llm_service_instance:
+            from app.services.agent_service import AgentService
             _agent_service_instance = AgentService(_repository_instance, _llm_service_instance)
             logger.info("✓ Agent service initialized")
         else:
@@ -100,7 +100,7 @@ def get_repository() -> InMemoryNoteRepository:
     return _repository_instance
 
 
-def get_llm_service() -> LLMService:
+def get_llm_service():
     """
     Get the singleton LLM service instance.
     
@@ -119,7 +119,7 @@ def get_llm_service() -> LLMService:
     return _llm_service_instance
 
 
-def get_agent_service() -> AgentService:
+def get_agent_service():
     """
     Get the singleton Agent service instance.
     

@@ -6,9 +6,16 @@ New code should use app.llm and app.services.ai_service instead.
 import logging
 import asyncio
 from typing import Optional
-from google import genai
-from google.genai import types
-from app.prompts.loader import format_summarization_prompt
+
+try:
+    from google import genai
+    from google.genai import types
+    HAS_GENAI = True
+except ImportError:
+    genai = None
+    types = None
+    HAS_GENAI = False
+
 from app.config import GEMINI_API_KEY
 
 logger = logging.getLogger(__name__)
@@ -18,6 +25,8 @@ class LLMService:
     """Legacy service for Google Gemini. Use app.llm.LLMClient for new code."""
 
     def __init__(self):
+        if not HAS_GENAI:
+            raise ImportError("google-genai package not installed. Install with: pip install google-genai")
         if not GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY not found in environment variables.")
         
