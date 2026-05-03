@@ -72,9 +72,7 @@ async def get_usage_summary(user_id: str) -> dict:
             "total_tokens": total,
             "by_operation": by_operation,
             "daily_limit": FREE_TIER_DAILY_LIMIT,
-            "remaining": max(
-                0, FREE_TIER_DAILY_LIMIT - _user_token_counts.get(user_id, 0)
-            ),
+            "remaining": max(0, FREE_TIER_DAILY_LIMIT - _user_token_counts.get(user_id, 0)),
         }
     except Exception as e:
         logger.warning(f"Failed to get usage summary: {e}")

@@ -132,6 +132,15 @@ export async function POST(request: Request) {
   // Fire-and-forget embedding generation via Python backend
   triggerEmbedding(user.id, newSource.id, newSource.title || newSource.url);
 
+  // After source creation, trigger content extraction (fire-and-forget)
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+  const INTERNAL_KEY = process.env.INTERNAL_API_KEY || "dev-internal-key";
+  fetch(`${BACKEND_URL}/embeddings/extract-content`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Internal-Key": INTERNAL_KEY },
+    body: JSON.stringify({ user_id: user.id, source_id: newSource.id, url: newSource.url }),
+  }).catch((e) => console.error("Content extraction trigger failed:", e));
+
   return NextResponse.json(
     { source: newSource, folderId: targetFolderId },
     { status: 201 }

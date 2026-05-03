@@ -44,9 +44,7 @@ class LLMClient:
             }
         return {}
 
-    async def chat(
-        self, messages: list[ChatMessage], tier: Tier = Tier.FAST, **kwargs
-    ) -> ChatResponse:
+    async def chat(self, messages: list[ChatMessage], tier: Tier = Tier.FAST, **kwargs) -> ChatResponse:
         model = self._model_id(tier)
         logger.info(f"chat: provider={self.config.provider.value} model={model}")
         return await self._provider.chat(
@@ -57,9 +55,7 @@ class LLMClient:
             **kwargs,
         )
 
-    async def stream_chat(
-        self, messages: list[ChatMessage], tier: Tier = Tier.FAST, **kwargs
-    ) -> AsyncIterator[str]:
+    async def stream_chat(self, messages: list[ChatMessage], tier: Tier = Tier.FAST, **kwargs) -> AsyncIterator[str]:
         model = self._model_id(tier)
         logger.info(f"stream_chat: provider={self.config.provider.value} model={model}")
         gen = self._provider.stream_chat(
@@ -116,9 +112,7 @@ class LLMClient:
         # For other providers, try OpenAI fallback
         openai_key = os.getenv("OPENAI_API_KEY")
         if openai_key:
-            return await openai_provider.embed(
-                api_key=openai_key, model=model, text=text
-            )
+            return await openai_provider.embed(api_key=openai_key, model=model, text=text)
 
         raise ValueError(
             f"No embedding support for provider {self.config.provider.value}. Set OPENAI_API_KEY or GOOGLE_API_KEY for fallback."

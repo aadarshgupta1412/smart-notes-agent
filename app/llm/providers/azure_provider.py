@@ -4,9 +4,7 @@ from app.llm.types import ChatMessage, ChatResponse
 
 
 def _client(api_key: str, endpoint: str, api_version: str) -> AsyncAzureOpenAI:
-    return AsyncAzureOpenAI(
-        api_key=api_key, azure_endpoint=endpoint, api_version=api_version
-    )
+    return AsyncAzureOpenAI(api_key=api_key, azure_endpoint=endpoint, api_version=api_version)
 
 
 async def chat(
@@ -62,7 +60,5 @@ async def embed(
     endpoint: str = "",
     api_version: str = "2024-10-21",
 ) -> list[float]:
-    resp = await _client(api_key, endpoint, api_version).embeddings.create(
-        model=model, input=text[:8000]
-    )
+    resp = await _client(api_key, endpoint, api_version).embeddings.create(model=model, input=text[:8000])
     return resp.data[0].embedding

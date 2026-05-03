@@ -7,9 +7,7 @@ def _client(api_key: str) -> AsyncOpenAI:
     return AsyncOpenAI(api_key=api_key)
 
 
-async def chat(
-    api_key: str, model: str, messages: list[ChatMessage], **kwargs
-) -> ChatResponse:
+async def chat(api_key: str, model: str, messages: list[ChatMessage], **kwargs) -> ChatResponse:
     resp = await _client(api_key).chat.completions.create(
         model=model,
         messages=[{"role": m.role, "content": m.content} for m in messages],
@@ -28,9 +26,7 @@ async def chat(
     )
 
 
-async def stream_chat(
-    api_key: str, model: str, messages: list[ChatMessage], **kwargs
-) -> AsyncIterator[str]:
+async def stream_chat(api_key: str, model: str, messages: list[ChatMessage], **kwargs) -> AsyncIterator[str]:
     stream = await _client(api_key).chat.completions.create(
         model=model,
         messages=[{"role": m.role, "content": m.content} for m in messages],

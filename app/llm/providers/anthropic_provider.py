@@ -19,9 +19,7 @@ def _split_system(messages: list[ChatMessage]) -> tuple[str | None, list[dict]]:
     return system, msgs
 
 
-async def chat(
-    api_key: str, model: str, messages: list[ChatMessage], **kwargs
-) -> ChatResponse:
+async def chat(api_key: str, model: str, messages: list[ChatMessage], **kwargs) -> ChatResponse:
     system, msgs = _split_system(messages)
     kwargs.setdefault("max_tokens", 4096)
     resp = await _client(api_key).messages.create(
@@ -40,9 +38,7 @@ async def chat(
     )
 
 
-async def stream_chat(
-    api_key: str, model: str, messages: list[ChatMessage], **kwargs
-) -> AsyncIterator[str]:
+async def stream_chat(api_key: str, model: str, messages: list[ChatMessage], **kwargs) -> AsyncIterator[str]:
     system, msgs = _split_system(messages)
     kwargs.setdefault("max_tokens", 4096)
     async with _client(api_key).messages.stream(

@@ -49,32 +49,18 @@ MODEL_REGISTRY: dict[str, ModelInfo] = {
         supports_embeddings=True,
     ),
     # Anthropic
-    "claude-sonnet-4-20250514": ModelInfo(
-        "claude-sonnet-4-20250514", Provider.ANTHROPIC, Tier.FAST, 200_000
-    ),
-    "claude-opus-4-20250514": ModelInfo(
-        "claude-opus-4-20250514", Provider.ANTHROPIC, Tier.STRONG, 200_000
-    ),
+    "claude-sonnet-4-20250514": ModelInfo("claude-sonnet-4-20250514", Provider.ANTHROPIC, Tier.FAST, 200_000),
+    "claude-opus-4-20250514": ModelInfo("claude-opus-4-20250514", Provider.ANTHROPIC, Tier.STRONG, 200_000),
     # Google Gemini 3.x (latest)
-    "gemini-3.1-flash-lite-preview": ModelInfo(
-        "gemini-3.1-flash-lite-preview", Provider.GOOGLE, Tier.FAST, 1_000_000
-    ),
-    "gemini-3-flash-preview": ModelInfo(
-        "gemini-3-flash-preview", Provider.GOOGLE, Tier.STRONG, 1_000_000
-    ),
+    "gemini-3.1-flash-lite-preview": ModelInfo("gemini-3.1-flash-lite-preview", Provider.GOOGLE, Tier.FAST, 1_000_000),
+    "gemini-3-flash-preview": ModelInfo("gemini-3-flash-preview", Provider.GOOGLE, Tier.STRONG, 1_000_000),
     "gemini-3-flash-thinking-preview": ModelInfo(
         "gemini-3-flash-thinking-preview", Provider.GOOGLE, Tier.THINKING, 1_000_000
     ),
     # Google Gemini 2.5 (stable)
-    "gemini-2.5-flash": ModelInfo(
-        "gemini-2.5-flash", Provider.GOOGLE, Tier.FAST, 1_000_000
-    ),
-    "gemini-2.5-pro": ModelInfo(
-        "gemini-2.5-pro", Provider.GOOGLE, Tier.STRONG, 1_000_000
-    ),
-    "gemini-2.5-flash-thinking": ModelInfo(
-        "gemini-2.5-flash-thinking", Provider.GOOGLE, Tier.THINKING, 1_000_000
-    ),
+    "gemini-2.5-flash": ModelInfo("gemini-2.5-flash", Provider.GOOGLE, Tier.FAST, 1_000_000),
+    "gemini-2.5-pro": ModelInfo("gemini-2.5-pro", Provider.GOOGLE, Tier.STRONG, 1_000_000),
+    "gemini-2.5-flash-thinking": ModelInfo("gemini-2.5-flash-thinking", Provider.GOOGLE, Tier.THINKING, 1_000_000),
     # Google Embeddings
     "text-embedding-004": ModelInfo(
         "text-embedding-004",
@@ -85,17 +71,11 @@ MODEL_REGISTRY: dict[str, ModelInfo] = {
         supports_embeddings=True,
     ),
     # Azure OpenAI (same models, different provider path)
-    "azure/gpt-4o-mini": ModelInfo(
-        "gpt-4o-mini", Provider.AZURE_OPENAI, Tier.FAST, 128_000
-    ),
+    "azure/gpt-4o-mini": ModelInfo("gpt-4o-mini", Provider.AZURE_OPENAI, Tier.FAST, 128_000),
     "azure/gpt-4o": ModelInfo("gpt-4o", Provider.AZURE_OPENAI, Tier.STRONG, 128_000),
     # Mistral
-    "mistral-small-latest": ModelInfo(
-        "mistral-small-latest", Provider.MISTRAL, Tier.FAST, 128_000
-    ),
-    "mistral-large-latest": ModelInfo(
-        "mistral-large-latest", Provider.MISTRAL, Tier.STRONG, 128_000
-    ),
+    "mistral-small-latest": ModelInfo("mistral-small-latest", Provider.MISTRAL, Tier.FAST, 128_000),
+    "mistral-large-latest": ModelInfo("mistral-large-latest", Provider.MISTRAL, Tier.STRONG, 128_000),
     "mistral-embed": ModelInfo(
         "mistral-embed",
         Provider.MISTRAL,

@@ -92,9 +92,7 @@ async def get_user_client(user_id: str) -> LLMClient:
                 api_key=settings["api_key_encrypted"],  # TODO: decrypt in production
                 fast_model=settings["fast_model"],
                 strong_model=settings["strong_model"],
-                embedding_model=settings.get(
-                    "embedding_model", "text-embedding-3-small"
-                ),
+                embedding_model=settings.get("embedding_model", "text-embedding-3-small"),
                 azure_endpoint=settings.get("azure_endpoint"),
                 azure_api_version=settings.get("azure_api_version", "2024-10-21"),
             )
@@ -104,7 +102,5 @@ async def get_user_client(user_id: str) -> LLMClient:
 
     default = get_default_client()
     if not default:
-        raise ValueError(
-            "No LLM configuration available. Set API keys in environment or configure via settings."
-        )
+        raise ValueError("No LLM configuration available. Set API keys in environment or configure via settings.")
     return default

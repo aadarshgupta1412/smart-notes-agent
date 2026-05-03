@@ -18,18 +18,14 @@ Rules:
 - Be concise but thorough. Use markdown formatting for readability.
 - When listing sources, use bullet points with the source title and URL."""
 
-SUMMARY_INSTRUCTION = (
-    "Summarize the following web content in 2-3 sentences, capturing the key points."
-)
+SUMMARY_INSTRUCTION = "Summarize the following web content in 2-3 sentences, capturing the key points."
 
 
 class ChatService:
     def __init__(self, llm: LLMClient):
         self.llm = llm
 
-    async def answer(
-        self, messages: list[ChatMessage], context: str = "", tier: Tier = Tier.FAST
-    ) -> ChatResponse:
+    async def answer(self, messages: list[ChatMessage], context: str = "", tier: Tier = Tier.FAST) -> ChatResponse:
         system = SYSTEM_PROMPT
         if context:
             system += f"\n\n## User's saved content (use as context):\n\n{context}"

@@ -54,9 +54,7 @@ class ConfigResponse(BaseModel):
 
 
 @router.post("/config", response_model=ConfigResponse)
-async def set_config(
-    req: ConfigRequest, x_user_id: str = Header(alias="X-User-Id", default="")
-):
+async def set_config(req: ConfigRequest, x_user_id: str = Header(alias="X-User-Id", default="")):
     """Set LLM config. With a user ID, stores per-user; otherwise updates default."""
     try:
         provider = Provider(req.provider)
@@ -160,9 +158,7 @@ class ChatRequest(BaseModel):
 
 
 @router.post("/chat")
-async def chat(
-    req: ChatRequest, x_user_id: str = Header(alias="X-User-Id", default="")
-):
+async def chat(req: ChatRequest, x_user_id: str = Header(alias="X-User-Id", default="")):
     client = await _resolve_client(x_user_id)
     service = ChatService(client)
     tier = Tier.STRONG if req.tier == "strong" else Tier.FAST
@@ -171,9 +167,7 @@ async def chat(
     if req.stream:
 
         async def generate():
-            async for chunk in service.stream_answer(
-                msgs, context=req.context, tier=tier
-            ):
+            async for chunk in service.stream_answer(msgs, context=req.context, tier=tier):
                 yield chunk
 
         return StreamingResponse(generate(), media_type="text/plain")
@@ -201,9 +195,7 @@ class EmbedRequest(BaseModel):
 
 
 @router.post("/embed")
-async def embed(
-    req: EmbedRequest, x_user_id: str = Header(alias="X-User-Id", default="")
-):
+async def embed(req: EmbedRequest, x_user_id: str = Header(alias="X-User-Id", default="")):
     client = await _resolve_client(x_user_id)
     service = EmbeddingService(client)
     vector = await service.embed(req.text)
@@ -219,9 +211,7 @@ class SummaryRequest(BaseModel):
 
 
 @router.post("/summarize")
-async def summarize(
-    req: SummaryRequest, x_user_id: str = Header(alias="X-User-Id", default="")
-):
+async def summarize(req: SummaryRequest, x_user_id: str = Header(alias="X-User-Id", default="")):
     client = await _resolve_client(x_user_id)
     service = SummaryService(client)
     summary = await service.summarize(req.content, max_tokens=req.max_tokens)

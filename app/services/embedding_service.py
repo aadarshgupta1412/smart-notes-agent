@@ -67,6 +67,16 @@ async def generate_and_store_embedding(
 
         supabase.table("embeddings").insert(row).execute()
         logger.info(f"Stored embedding for source={source_id}, dims={len(vector)}")
+
+        from app.services.connections_service import compute_connections
+
+        await compute_connections(
+            user_id=user_id,
+            source_id=source_id,
+            embedding=vector,
+            dimensions=len(vector),
+        )
+
         return True
     except Exception as e:
         logger.error(f"Embedding generation failed: {e}")
@@ -87,12 +97,7 @@ async def auto_categorize_source(
 
     try:
         supabase = get_supabase_client()
-        result = (
-            supabase.table("folders")
-            .select("id, name")
-            .eq("user_id", user_id)
-            .execute()
-        )
+        result = supabase.table("folders").select("id, name").eq("user_id", user_id).execute()
         folders = result.data or []
 
         if not folders:
