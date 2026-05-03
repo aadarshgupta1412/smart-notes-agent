@@ -13,7 +13,6 @@ import {
   Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,161 +74,129 @@ export default function SourceDetail({ source }: Props) {
   if (loading) {
     return (
       <div className="p-4 flex flex-col gap-4">
-        <Skeleton className="h-28 w-full rounded-xl" />
-        <Skeleton className="h-14 w-full rounded-xl" />
+        <Skeleton className="h-20 w-full rounded-md" />
+        <Skeleton className="h-10 w-full rounded-md" />
         <div className="flex flex-col gap-3">
-          <Skeleton className="h-4 w-1/3" />
-          <Skeleton className="h-20 w-full rounded-xl" />
-          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-3 w-1/3" />
+          <Skeleton className="h-16 w-full rounded-md" />
+          <Skeleton className="h-16 w-full rounded-md" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 flex flex-col gap-4 animate-fade-in">
-      {/* Source header card */}
-      <Card className="border-border/50 overflow-hidden">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <div className={cn(
-              "size-12 flex items-center justify-center rounded-xl",
-              source.type === "highlight"
-                ? "bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400"
-            )}>
-              {source.type === "highlight" ? (
-                <Highlighter className="size-5" />
-              ) : (
-                <Globe className="size-5" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-foreground truncate">
-                {source.title || "Untitled"}
-              </h3>
-              <p className="text-sm text-muted-foreground truncate mt-0.5">
-                {getDomain(source.url)}
-              </p>
-              <div className="flex items-center gap-3 mt-2">
-                <Badge 
-                  variant="secondary" 
-                  className={cn(
-                    "text-xs capitalize",
-                    source.type === "highlight" && "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400"
-                  )}
-                >
-                  {source.type}
-                </Badge>
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Calendar className="size-3" />
-                  {formatDate(source.created_at)}
-                </span>
-              </div>
-            </div>
+    <div className="p-4 flex flex-col gap-4">
+      {/* Source header */}
+      <div className="flex items-start gap-3">
+        {source.type === "highlight" ? (
+          <Highlighter className="size-5 text-highlight shrink-0 mt-0.5" />
+        ) : (
+          <Globe className="size-5 text-muted-foreground shrink-0 mt-0.5" />
+        )}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-foreground">
+            {source.title || "Untitled"}
+          </h3>
+          <p className="text-xs text-muted-foreground truncate mt-0.5">
+            {getDomain(source.url)}
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="secondary" className="text-[10px] capitalize">
+              {source.type}
+            </Badge>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Calendar className="size-3" />
+              {formatDate(source.created_at)}
+            </span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* AI Summary section */}
+      <Separator />
+
+      {/* AI Summary */}
       <Collapsible open={showSummary} onOpenChange={setShowSummary}>
-        <Card className="border-border/50 overflow-hidden">
-          {/* Gradient header */}
-          <CollapsibleTrigger className="w-full">
-            <div className="ai-summary-header flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="size-4" />
-                <span>AI Summary</span>
-              </div>
-              {showSummary ? (
-                <ChevronUp className="size-4 opacity-70" />
-              ) : (
-                <ChevronDown className="size-4 opacity-70" />
-              )}
+        <CollapsibleTrigger className="w-full rounded-md hover:bg-secondary transition-colors">
+          <div className="flex items-center justify-between px-1 py-1.5">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <Sparkles className="size-3.5" />
+              AI Summary
             </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="p-4">
-              {summary ? (
-                <p className="text-sm text-foreground leading-relaxed">
-                  {summary.summary_text}
+            {showSummary ? (
+              <ChevronUp className="size-3.5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="size-3.5 text-muted-foreground" />
+            )}
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2">
+            {summary ? (
+              <p className="text-sm text-foreground leading-relaxed px-1">
+                {summary.summary_text}
+              </p>
+            ) : (
+              <div className="flex flex-col items-center py-4 text-center">
+                <Sparkles className="size-5 text-muted-foreground/50 mb-2" />
+                <p className="text-xs text-muted-foreground mb-2">
+                  No summary available
                 </p>
-              ) : (
-                <div className="flex flex-col items-center py-4 text-center">
-                  <div className="size-10 rounded-full bg-muted flex items-center justify-center mb-2">
-                    <Sparkles className="size-4 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    No summary available yet
-                  </p>
-                  <Button variant="ghost" size="sm" className="mt-2 text-xs">
-                    <RefreshCw className="size-3 mr-1" />
-                    Generate Summary
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
+                <Button variant="ghost" size="sm" className="text-xs h-7">
+                  <RefreshCw className="size-3 mr-1.5" />
+                  Generate
+                </Button>
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
       </Collapsible>
+
+      <Separator />
 
       {/* Source URL */}
       <a
         href={source.url}
         target="_blank"
         rel="noopener noreferrer"
-        className={cn(
-          "flex items-center gap-3 px-4 py-3 rounded-xl",
-          "bg-card border border-border/50",
-          "hover:border-primary/30 hover:shadow-md",
-          "transition-all duration-200 group"
-        )}
+        className="flex items-center gap-2.5 px-3 py-2 rounded-md border border-border hover:border-primary/30 bg-card transition-colors group"
       >
-        <div className="size-9 rounded-lg bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-          <ExternalLink className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
-        </div>
-        <span className="text-sm text-primary truncate flex-1 text-left">
-          {source.url}
-        </span>
+        <ExternalLink className="size-3.5 text-muted-foreground group-hover:text-primary shrink-0" />
+        <span className="text-xs text-primary truncate">{source.url}</span>
       </a>
 
-      {/* Highlights section */}
+      {/* Highlights */}
       {source.type === "highlight" && highlights.length > 0 && (
-        <div className="flex flex-col gap-3">
+        <>
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <Highlighter className="size-4 text-amber-500" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Highlights
-              </span>
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <Highlighter className="size-3.5 text-highlight" />
+              Highlights
             </div>
-            <Badge variant="secondary" className="text-xs">
-              {highlights.length}
-            </Badge>
+            <span className="text-xs text-muted-foreground">{highlights.length}</span>
           </div>
-          
-          {highlights.map((hl, index) => (
+
+          {highlights.map((hl) => (
             <div
               key={hl.id}
-              className="highlight-block animate-fade-in"
-              style={{ animationDelay: `${index * 0.05}s` }}
+              className="border-l-2 border-highlight pl-3 py-2 rounded-r-md hover:bg-highlight-subtle transition-colors"
             >
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm text-foreground leading-relaxed">
                 &ldquo;{hl.content}&rdquo;
               </p>
-              <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
                 <Clock className="size-3" />
                 {formatDate(hl.created_at)} at {formatTime(hl.created_at)}
               </p>
             </div>
           ))}
-        </div>
+        </>
       )}
 
-      <Separator className="my-1" />
+      <Separator />
 
-      {/* Metadata footer */}
-      <div className="px-1 flex flex-col gap-2 text-xs text-muted-foreground">
+      {/* Metadata */}
+      <div className="px-1 flex flex-col gap-1.5 text-xs text-muted-foreground">
         <div className="flex items-center justify-between">
           <span>Added</span>
           <span className="text-foreground">
@@ -238,7 +205,7 @@ export default function SourceDetail({ source }: Props) {
         </div>
         {source.updated_at !== source.created_at && (
           <div className="flex items-center justify-between">
-            <span>Last updated</span>
+            <span>Updated</span>
             <span className="text-foreground">
               {formatDate(source.updated_at)} at {formatTime(source.updated_at)}
             </span>

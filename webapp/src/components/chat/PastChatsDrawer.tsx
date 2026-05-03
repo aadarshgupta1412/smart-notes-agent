@@ -1,16 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { MessageSquare, Trash2, Clock, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { MessageSquare, Trash2, Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { Chat } from "@/lib/types";
 
@@ -23,7 +17,7 @@ interface Props {
 export default function PastChatsDrawer({ open, onClose, onSelectChat }: Props) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(false);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -36,6 +30,17 @@ export default function PastChatsDrawer({ open, onClose, onSelectChat }: Props) 
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open, onClose]);
+
   const handleDelete = async (e: React.MouseEvent, chatId: string) => {
     e.stopPropagation();
     await fetch(`/api/chats/${chatId}`, { method: "DELETE" });
@@ -46,11 +51,11 @@ export default function PastChatsDrawer({ open, onClose, onSelectChat }: Props) 
     const date = new Date(dateStr);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    
+    if (diffDays < 7) return `${diffDays}d ago`;
+
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -58,29 +63,42 @@ export default function PastChatsDrawer({ open, onClose, onSelectChat }: Props) 
   };
 
   return (
-    <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <SheetContent side="right" className="w-80 p-0 border-l border-border/50">
-        <SheetHeader className="px-4 py-4 border-b border-border/50 bg-card/50">
-          <SheetTitle className="flex items-center gap-2 text-base">
-            <Clock className="size-4 text-muted-foreground" />
+    <>
+      {open && (
+        <div className="absolute inset-0 bg-black/5 z-10 transition-opacity" />
+      )}
+      <div
+        ref={panelRef}
+        className={cn(
+          "absolute top-0 right-0 h-full w-72 z-20 bg-card border-l border-border shadow-lg",
+          "flex flex-col transition-transform duration-200 ease-in-out",
+          open ? "translate-x-0" : "translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Clock className="size-3.5 text-muted-foreground" />
             Chat History
-          </SheetTitle>
-        </SheetHeader>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6 text-muted-foreground hover:text-foreground"
+            onClick={onClose}
+          >
+            <X className="size-3.5" />
+          </Button>
+        </div>
 
-        <ScrollArea className="h-[calc(100vh-65px)]">
-          <div className="p-3">
-            {/* Loading state */}
+        <ScrollArea className="flex-1">
+          <div className="p-2">
             {loading && (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div 
-                    key={i} 
-                    className="flex items-center gap-3 px-3 py-3 rounded-xl bg-muted/30"
-                    style={{ animationDelay: `${i * 0.05}s` }}
-                  >
-                    <Skeleton className="size-9 rounded-lg" />
-                    <div className="flex-1 flex flex-col gap-2">
-                      <Skeleton className="h-4 w-3/4" />
+                  <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+                    <Skeleton className="size-7 rounded-md" />
+                    <div className="flex-1 flex flex-col gap-1.5">
+                      <Skeleton className="h-3.5 w-3/4" />
                       <Skeleton className="h-3 w-1/3" />
                     </div>
                   </div>
@@ -88,12 +106,9 @@ export default function PastChatsDrawer({ open, onClose, onSelectChat }: Props) 
               </div>
             )}
 
-            {/* Empty state */}
             {!loading && chats.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 px-4 text-center animate-fade-in">
-                <div className="size-14 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-                  <MessageSquare className="size-7 text-muted-foreground" />
-                </div>
+              <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                <MessageSquare className="size-8 text-muted-foreground/50 mb-3" />
                 <p className="text-sm font-medium text-foreground mb-1">No chats yet</p>
                 <p className="text-xs text-muted-foreground">
                   Start a conversation to see it here
@@ -101,36 +116,28 @@ export default function PastChatsDrawer({ open, onClose, onSelectChat }: Props) 
               </div>
             )}
 
-            {/* Chat list */}
             {!loading && chats.length > 0 && (
-              <div className="flex flex-col gap-1">
-                {chats.map((chat, index) => (
-                  <button
+              <div className="flex flex-col gap-0.5">
+                {chats.map((chat) => (
+                  <div
                     key={chat.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onSelectChat(chat)}
-                    onMouseEnter={() => setHoveredId(chat.id)}
-                    onMouseLeave={() => setHoveredId(null)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onSelectChat(chat);
+                      }
+                    }}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-3 rounded-xl",
-                      "hover:bg-accent transition-all duration-200 text-left group",
-                      "animate-fade-in"
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer",
+                      "hover:bg-secondary transition-colors text-left group"
                     )}
-                    style={{ animationDelay: `${index * 0.03}s` }}
                   >
-                    <div className={cn(
-                      "size-9 rounded-lg flex items-center justify-center transition-all duration-200 flex-shrink-0",
-                      hoveredId === chat.id
-                        ? "gradient-primary text-white shadow-md"
-                        : "bg-muted text-muted-foreground"
-                    )}>
-                      {hoveredId === chat.id ? (
-                        <Sparkles className="size-4" />
-                      ) : (
-                        <MessageSquare className="size-4" />
-                      )}
-                    </div>
+                    <MessageSquare className="size-4 text-muted-foreground group-hover:text-primary shrink-0 transition-colors" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                      <p className="text-sm text-foreground truncate group-hover:text-primary transition-colors">
                         {chat.title}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
@@ -140,21 +147,18 @@ export default function PastChatsDrawer({ open, onClose, onSelectChat }: Props) 
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={cn(
-                        "size-8 opacity-0 group-hover:opacity-100 transition-all duration-200",
-                        "hover:bg-destructive/10 hover:text-destructive"
-                      )}
+                      className="size-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
                       onClick={(e) => handleDelete(e, chat.id)}
                     >
-                      <Trash2 className="size-4" />
+                      <Trash2 className="size-3" />
                     </Button>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
           </div>
         </ScrollArea>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </>
   );
 }
