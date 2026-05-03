@@ -1,42 +1,72 @@
-import { openai } from "@ai-sdk/openai";
-import OpenAI from "openai";
+/**
+ * AI utilities - calls Python FastAPI backend for LLM operations
+ */
 
-export function getChatModel() {
-  return openai("gpt-4o-mini");
-}
-
-let _openaiClient: OpenAI | null = null;
-function getOpenAIClient(): OpenAI {
-  if (!_openaiClient) {
-    _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-  return _openaiClient;
-}
+const BACKEND_URL = process.env.BACKEND_API_URL || "http://127.0.0.1:8001";
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const client = getOpenAIClient();
-  const response = await client.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text.slice(0, 8000),
+  const response = await fetch(`${BACKEND_URL}/llm/embed`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: text.slice(0, 8000) }),
   });
-  return response.data[0].embedding;
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Embedding failed: ${error}`);
+  }
+
+  const data = await response.json();
+  return data.embedding;
 }
 
 export async function generateSummary(content: string): Promise<string> {
-  const client = getOpenAIClient();
-  const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a concise summarizer. Summarize the following web content in 2-3 sentences, capturing the key points.",
-      },
-      { role: "user", content: content.slice(0, 6000) },
-    ],
-    max_tokens: 200,
+  const response = await fetch(`${BACKEND_URL}/llm/summarize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: content.slice(0, 6000), max_tokens: 200 }),
   });
-  return response.choices[0]?.message?.content || "Summary unavailable.";
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Summary failed: ${error}`);
+  }
+
+  const data = await response.json();
+  return data.summary;
+}
+
+export interface ChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+export async function streamChat(
+  messages: ChatMessage[],
+  context: string = "",
+  tier: "fast" | "strong" = "fast"
+): Promise<ReadableStream<Uint8Array>> {
+  const response = await fetch(`${BACKEND_URL}/llm/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      context,
+      tier,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Chat failed: ${error}`);
+  }
+
+  if (!response.body) {
+    throw new Error("No response body");
+  }
+
+  return response.body;
 }
 
 export const SYSTEM_PROMPT = `You are a personal knowledge assistant. Your role is to help the user understand and explore their saved web content (highlights and bookmarks).
