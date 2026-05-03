@@ -41,15 +41,22 @@ def initialize_services():
         _repository_instance = InMemoryNoteRepository()
         logger.info("✓ Repository initialized")
         
-        # Initialize LLM service (this validates API key)
-        _llm_service_instance = LLMService()
-        logger.info("✓ LLM service initialized")
+        # Initialize LLM service (legacy Gemini — optional, skipped if no key)
+        try:
+            _llm_service_instance = LLMService()
+            logger.info("✓ LLM service initialized")
+        except (ValueError, ConnectionError) as e:
+            logger.warning(f"Legacy LLM service skipped (no GEMINI_API_KEY): {e}")
+            _llm_service_instance = None
         
         # Initialize Agent service (depends on repository and LLM service)
-        _agent_service_instance = AgentService(_repository_instance, _llm_service_instance)
-        logger.info("✓ Agent service initialized")
+        if _llm_service_instance:
+            _agent_service_instance = AgentService(_repository_instance, _llm_service_instance)
+            logger.info("✓ Agent service initialized")
+        else:
+            logger.info("Agent service skipped (LLM service unavailable)")
         
-        logger.info("All singleton services initialized successfully!")
+        logger.info("Singleton services initialized!")
         
     except Exception as e:
         logger.error(f"Failed to initialize services: {e}")
