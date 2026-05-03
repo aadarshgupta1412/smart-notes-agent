@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { History, Plus, Send, Loader2, X, MessageSquare } from "lucide-react";
+import { History, Plus, Send, X, MessageSquare, Square, RotateCcw } from "lucide-react";
 import PastChatsDrawer from "@/components/chat/PastChatsDrawer";
 import MentionDropdown from "@/components/chat/MentionDropdown";
 import MarkdownRenderer from "@/components/chat/MarkdownRenderer";
@@ -43,10 +43,13 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showMention, setShowMention] = useState(false);
   const [mentionFilters, setMentionFilters] = useState<ChatFilters>({});
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const scrollViewportRef = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Internal chat ID — avoids race conditions with URL-driven re-renders
   const [localChatId, setLocalChatId] = useState<string | null>(activeChatId);
@@ -120,6 +123,18 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
     }
   }, [messages, isStreaming, scrollToBottom]);
 
+  const handleStop = useCallback(() => {
+    abortRef.current?.abort();
+    setIsStreaming(false);
+  }, []);
+
+  const adjustHeight = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 128) + "px";
+  }, []);
+
   // Load chat when localChatId changes — skip if we're streaming into it
   useEffect(() => {
     if (!localChatId) {
@@ -148,6 +163,12 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
 
     setInput("");
     setShowMention(false);
+    setFailedMessage(null);
+
+    // Reset textarea height
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
 
     let chatId = localChatId;
 
@@ -223,6 +244,7 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
     };
 
     try {
+      abortRef.current = new AbortController();
       const res = await fetch(`/api/chats/${resolvedChatId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -233,6 +255,7 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
               ? effectiveFilters
               : undefined,
         }),
+        signal: abortRef.current.signal,
       });
 
       if (!res.ok) throw new Error("Failed to send message");
@@ -253,19 +276,24 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
       if (flushTimer) clearTimeout(flushTimer);
       flushToReact();
     } catch (err) {
-      console.error("Chat error:", err);
-      if (flushTimer) clearTimeout(flushTimer);
-      setMessages((prev) => {
-        const updated = [...prev];
-        const lastMsg = updated[updated.length - 1];
-        if (lastMsg?.role === "assistant" && !lastMsg.content) {
-          updated[updated.length - 1] = {
-            ...lastMsg,
-            content: "Sorry, something went wrong. Please try again.",
-          };
-        }
-        return updated;
-      });
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // User cancelled — keep partial content
+      } else {
+        console.error("Chat error:", err);
+        setFailedMessage(messageToSend);
+        if (flushTimer) clearTimeout(flushTimer);
+        setMessages((prev) => {
+          const updated = [...prev];
+          const lastMsg = updated[updated.length - 1];
+          if (lastMsg?.role === "assistant" && !lastMsg.content) {
+            updated[updated.length - 1] = {
+              ...lastMsg,
+              content: "Sorry, something went wrong. Please try again.",
+            };
+          }
+          return updated;
+        });
+      }
     }
 
     streamingChatIdRef.current = null;
@@ -279,6 +307,7 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setInput(val);
+    adjustHeight();
 
     const lastAtIdx = val.lastIndexOf("@");
     if (lastAtIdx >= 0 && lastAtIdx === val.length - 1) {
@@ -334,7 +363,44 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
     setChatTitle("New Chat");
     setMentionFilters({});
     setInput("");
+    setFailedMessage(null);
   };
+
+  const handleRenameChat = async (newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed || !localChatId) {
+      setIsEditingTitle(false);
+      return;
+    }
+    setChatTitle(trimmed);
+    setIsEditingTitle(false);
+    await fetch(`/api/chats/${localChatId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: trimmed }),
+    });
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "n") {
+        e.preventDefault();
+        handleNewChat();
+      }
+      if (mod && e.key === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+      if (e.key === "Escape") {
+        if (drawerOpen) setDrawerOpen(false);
+        else inputRef.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [drawerOpen]);
 
   const activeMentions = [
     ...(mentionFilters.folderIds || []).map((id) => ({ type: "folder" as const, id })),
@@ -355,9 +421,26 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
           <Plus className="size-4" />
         </Button>
 
-        <span className="text-sm font-medium text-foreground truncate px-4">
-          {chatTitle}
-        </span>
+        {isEditingTitle ? (
+          <input
+            autoFocus
+            defaultValue={chatTitle}
+            className="text-sm font-medium text-foreground bg-transparent border-b border-primary outline-none px-1 max-w-[200px] text-center"
+            onBlur={(e) => handleRenameChat(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleRenameChat(e.currentTarget.value);
+              if (e.key === "Escape") setIsEditingTitle(false);
+            }}
+          />
+        ) : (
+          <span
+            className="text-sm font-medium text-foreground truncate px-4 cursor-default"
+            onDoubleClick={() => localChatId && setIsEditingTitle(true)}
+            title={localChatId ? "Double-click to rename" : undefined}
+          >
+            {chatTitle}
+          </span>
+        )}
 
         <Button
           variant="ghost"
@@ -423,6 +506,21 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
                     />
                   ) : (
                     <TypingIndicator />
+                  )}
+                  {failedMessage && isLastAssistantMessage && !isStreaming && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        const msg = failedMessage;
+                        setFailedMessage(null);
+                        handleSend(msg);
+                      }}
+                    >
+                      <RotateCcw className="size-3" />
+                      Retry
+                    </Button>
                   )}
                 </div>
               );
@@ -500,19 +598,20 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
             </div>
             <Button
               size="icon"
-              onClick={() => handleSend()}
-              disabled={!input.trim() || isStreaming}
+              onClick={() => isStreaming ? handleStop() : handleSend()}
+              disabled={!isStreaming && !input.trim()}
               className="size-10 rounded-lg shrink-0 hover:bg-primary-hover"
+              title={isStreaming ? "Stop generating" : "Send message"}
             >
               {isStreaming ? (
-                <Loader2 className="size-4 animate-spin" />
+                <Square className="size-4" />
               ) : (
                 <Send className="size-4" />
               )}
             </Button>
           </div>
           <p className="text-[11px] text-muted-foreground text-center mt-2">
-            <kbd className="kbd">Enter</kbd> to send &middot; <kbd className="kbd">Shift+Enter</kbd> for new line &middot; <kbd className="kbd">@</kbd> to mention
+            <kbd className="kbd">Enter</kbd> to send &middot; <kbd className="kbd">Shift+Enter</kbd> for new line &middot; <kbd className="kbd">@</kbd> to mention &middot; <kbd className="kbd">⌘N</kbd> new chat
           </p>
         </div>
       </div>
@@ -520,10 +619,15 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
       <PastChatsDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onSelectChat={(chat: Chat) => {
+        activeChatId={localChatId}
+        onSelectChat={(chat: Chat | null) => {
           streamingChatIdRef.current = null;
-          setLocalChatId(chat.id);
-          onChatChange(chat.id);
+          if (chat) {
+            setLocalChatId(chat.id);
+            onChatChange(chat.id);
+          } else {
+            handleNewChat();
+          }
           setDrawerOpen(false);
         }}
       />

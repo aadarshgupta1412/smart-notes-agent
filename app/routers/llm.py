@@ -1,88 +1,28 @@
 """
 LLM config + chat endpoints.
 """
-import os
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 from app.llm import Provider, Tier, LLMConfig, ChatMessage, LLMClient, MODEL_REGISTRY
 from app.services.ai_service import ChatService, EmbeddingService, SummaryService
+from app.services.user_config_service import get_default_client, get_default_config, get_user_client
+from app.services.usage_service import log_usage, check_rate_limit, get_usage_summary
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/llm", tags=["llm"])
 
-# In-memory config — in production, store per-user in DB
-_active_config: Optional[LLMConfig] = None
-_client: Optional[LLMClient] = None
 
-
-def _init_from_env():
-    """Initialize LLM client from environment variables on startup."""
-    global _active_config, _client
-    
-    if _client is not None:
-        return  # Already initialized
-    
-    # Try Azure OpenAI first
-    azure_key = os.getenv("AZURE_API_KEY")
-    azure_base = os.getenv("AZURE_API_BASE")
-    azure_deployment = os.getenv("AZURE_API_DEPLOYMENT_NAME")
-    
-    if azure_key and azure_base and azure_deployment:
-        _active_config = LLMConfig(
-            provider=Provider.AZURE_OPENAI,
-            api_key=azure_key,
-            fast_model=azure_deployment,
-            strong_model=azure_deployment,
-            embedding_model="text-embedding-3-small",
-            azure_endpoint=azure_base,
-            azure_api_version=os.getenv("AZURE_API_VERSION", "2024-10-21"),
-        )
-        _client = LLMClient(_active_config)
-        logger.info(f"LLM auto-configured: Azure OpenAI ({azure_deployment})")
-        return
-    
-    # Try Google API
-    google_key = os.getenv("GOOGLE_API_KEY")
-    if google_key:
-        _active_config = LLMConfig(
-            provider=Provider.GOOGLE,
-            api_key=google_key,
-            fast_model="gemini-2.5-flash",
-            strong_model="gemini-2.5-pro",
-            embedding_model="text-embedding-004",
-        )
-        _client = LLMClient(_active_config)
-        logger.info("LLM auto-configured: Google Gemini")
-        return
-    
-    # Try OpenAI
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if openai_key:
-        _active_config = LLMConfig(
-            provider=Provider.OPENAI,
-            api_key=openai_key,
-            fast_model="gpt-4o-mini",
-            strong_model="gpt-4o",
-            embedding_model="text-embedding-3-small",
-        )
-        _client = LLMClient(_active_config)
-        logger.info("LLM auto-configured: OpenAI")
-        return
-    
-    logger.warning("No LLM API keys found in environment. Configure via POST /llm/config")
-
-
-# Auto-initialize on module load
-_init_from_env()
-
-
-def _get_client() -> LLMClient:
-    if _client is None:
+async def _resolve_client(user_id: str = "") -> LLMClient:
+    """Resolve LLM client: per-user BYOK if available, else default."""
+    if user_id:
+        return await get_user_client(user_id)
+    client = get_default_client()
+    if client is None:
         raise HTTPException(status_code=400, detail="LLM not configured. Set API keys in .env or POST /llm/config")
-    return _client
+    return client
 
 
 # ── Config endpoints ──────────────────────────────────────────────
@@ -105,24 +45,34 @@ class ConfigResponse(BaseModel):
 
 
 @router.post("/config", response_model=ConfigResponse)
-async def set_config(req: ConfigRequest):
-    global _active_config, _client
+async def set_config(req: ConfigRequest, x_user_id: str = Header(alias="X-User-Id", default="")):
+    """Set LLM config. With a user ID, stores per-user; otherwise updates default."""
     try:
         provider = Provider(req.provider)
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Unknown provider: {req.provider}. Options: {[p.value for p in Provider]}")
 
-    _active_config = LLMConfig(
-        provider=provider,
-        api_key=req.api_key,
-        fast_model=req.fast_model,
-        strong_model=req.strong_model,
-        embedding_model=req.embedding_model,
-        azure_endpoint=req.azure_endpoint,
-        azure_api_version=req.azure_api_version,
-    )
-    _client = LLMClient(_active_config)
-    logger.info(f"LLM config updated: {provider.value}")
+    if x_user_id:
+        # Per-user config: store in DB for future use
+        from app.db import get_supabase_client
+        try:
+            supabase = get_supabase_client()
+            supabase.table("user_llm_settings").upsert({
+                "user_id": x_user_id,
+                "provider": provider.value,
+                "api_key_encrypted": req.api_key,  # TODO: encrypt in production
+                "fast_model": req.fast_model,
+                "strong_model": req.strong_model,
+                "embedding_model": req.embedding_model,
+                "azure_endpoint": req.azure_endpoint,
+                "azure_api_version": req.azure_api_version,
+                "is_active": True,
+            }).execute()
+        except Exception as e:
+            logger.error(f"Failed to save user LLM config: {e}")
+            raise HTTPException(status_code=500, detail="Failed to save configuration")
+    
+    logger.info(f"LLM config updated: {provider.value} (user={x_user_id or 'default'})")
     return ConfigResponse(
         provider=provider.value,
         fast_model=req.fast_model,
@@ -132,14 +82,28 @@ async def set_config(req: ConfigRequest):
 
 
 @router.get("/config", response_model=ConfigResponse)
-async def get_config():
-    if _active_config is None:
+async def get_config(x_user_id: str = Header(alias="X-User-Id", default="")):
+    if x_user_id:
+        try:
+            client = await get_user_client(x_user_id)
+            cfg = client.config
+            return ConfigResponse(
+                provider=cfg.provider.value,
+                fast_model=cfg.fast_model,
+                strong_model=cfg.strong_model,
+                embedding_model=cfg.embedding_model,
+            )
+        except Exception:
+            pass
+
+    default_cfg = get_default_config()
+    if default_cfg is None:
         raise HTTPException(status_code=404, detail="No LLM config set.")
     return ConfigResponse(
-        provider=_active_config.provider.value,
-        fast_model=_active_config.fast_model,
-        strong_model=_active_config.strong_model,
-        embedding_model=_active_config.embedding_model,
+        provider=default_cfg.provider.value,
+        fast_model=default_cfg.fast_model,
+        strong_model=default_cfg.strong_model,
+        embedding_model=default_cfg.embedding_model,
     )
 
 
@@ -158,6 +122,14 @@ async def list_models():
     return by_provider
 
 
+@router.get("/usage")
+async def get_usage(x_user_id: str = Header(alias="X-User-Id", default="")):
+    """Get token usage summary for a user."""
+    if not x_user_id:
+        return {"error": "User ID required"}
+    return await get_usage_summary(x_user_id)
+
+
 # ── Chat endpoint ─────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
@@ -168,8 +140,8 @@ class ChatRequest(BaseModel):
 
 
 @router.post("/chat")
-async def chat(req: ChatRequest):
-    client = _get_client()
+async def chat(req: ChatRequest, x_user_id: str = Header(alias="X-User-Id", default="")):
+    client = await _resolve_client(x_user_id)
     service = ChatService(client)
     tier = Tier.STRONG if req.tier == "strong" else Tier.FAST
     msgs = [ChatMessage(role=m["role"], content=m["content"]) for m in req.messages]
@@ -181,6 +153,17 @@ async def chat(req: ChatRequest):
         return StreamingResponse(generate(), media_type="text/plain")
 
     resp = await service.answer(msgs, context=req.context, tier=tier)
+
+    if x_user_id and resp.usage:
+        await log_usage(
+            user_id=x_user_id,
+            operation="chat",
+            provider=client.config.provider.value,
+            model=resp.model or client.config.fast_model,
+            prompt_tokens=resp.usage.get("prompt_tokens", 0),
+            completion_tokens=resp.usage.get("completion_tokens", 0),
+        )
+
     return {"content": resp.content, "model": resp.model, "usage": resp.usage}
 
 
@@ -191,8 +174,8 @@ class EmbedRequest(BaseModel):
 
 
 @router.post("/embed")
-async def embed(req: EmbedRequest):
-    client = _get_client()
+async def embed(req: EmbedRequest, x_user_id: str = Header(alias="X-User-Id", default="")):
+    client = await _resolve_client(x_user_id)
     service = EmbeddingService(client)
     vector = await service.embed(req.text)
     return {"embedding": vector, "dimensions": len(vector)}
@@ -206,8 +189,8 @@ class SummaryRequest(BaseModel):
 
 
 @router.post("/summarize")
-async def summarize(req: SummaryRequest):
-    client = _get_client()
+async def summarize(req: SummaryRequest, x_user_id: str = Header(alias="X-User-Id", default="")):
+    client = await _resolve_client(x_user_id)
     service = SummaryService(client)
     summary = await service.summarize(req.content, max_tokens=req.max_tokens)
     return {"summary": summary}

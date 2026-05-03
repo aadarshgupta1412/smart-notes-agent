@@ -2,13 +2,38 @@
 Smart Notes Agent - FastAPI Application Entry Point
 """
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import APP_NAME
-from app.routers import notes, agent, llm
+from app.routers import notes, agent, llm, embeddings
 
 # Initialize logger
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info(f"{APP_NAME} is starting up...")
+    try:
+        from app.dependencies import initialize_services
+        initialize_services()
+        logger.info("All services initialized")
+        logger.info(f"{APP_NAME} startup complete")
+    except Exception as e:
+        logger.error(f"Startup failed: {e}", exc_info=True)
+        raise
+    yield
+    # Shutdown
+    logger.info(f"{APP_NAME} is shutting down...")
+    try:
+        from app.dependencies import shutdown_services
+        shutdown_services()
+    except Exception as e:
+        logger.warning(f"Error during shutdown: {e}", exc_info=True)
+    logger.info("Shutdown complete")
+
 
 # Create FastAPI application
 app = FastAPI(
@@ -16,7 +41,8 @@ app = FastAPI(
     description="AI-powered note management system with intelligent query capabilities",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS Configuration (for future frontend integration)
@@ -33,6 +59,7 @@ app.add_middleware(
 app.include_router(notes.router)
 app.include_router(agent.router)
 app.include_router(llm.router)
+app.include_router(embeddings.router)
 
 
 @app.get("/", tags=["root"])
@@ -81,56 +108,6 @@ async def db_test():
     except Exception as e:
         logger.error(f"Database test failed: {e}")
         return {"status": "error", "message": str(e)}
-
-
-# Application startup event
-@app.on_event("startup")
-async def startup_event():
-    """
-    Execute on application startup.
-    
-    Initialize all singleton services here to:
-    - Catch configuration errors early (fail fast)
-    - Reduce first-request latency (no cold start)
-    - Ensure all services are ready before accepting requests
-    """
-    logger.info(f"{APP_NAME} is starting up...")
-    
-    try:
-        # Import here to avoid circular dependencies
-        from app.dependencies import initialize_services
-        
-        # Initialize all singleton services (eager initialization)
-        initialize_services()
-        
-        logger.info("Repository Pattern: In-Memory storage active")
-        logger.info("AI Service: Google Gemini API ready")
-        logger.info("API Documentation available at: /docs")
-        logger.info(f"{APP_NAME} startup complete - ready to accept requests!")
-        
-    except Exception as e:
-        logger.error(f"Startup failed: {e}", exc_info=True)
-        logger.error("Application cannot start. Please check configuration and API keys.")
-        raise
-
-
-# Application shutdown event
-@app.on_event("shutdown")
-async def shutdown_event():
-    """
-    Execute on application shutdown.
-    
-    Clean up singleton services and release resources.
-    """
-    logger.info(f"{APP_NAME} is shutting down...")
-    
-    try:
-        from app.dependencies import shutdown_services
-        shutdown_services()
-    except Exception as e:
-        logger.warning(f"Error during shutdown: {e}", exc_info=True)
-    
-    logger.info("Shutdown complete")
 
 
 if __name__ == "__main__":

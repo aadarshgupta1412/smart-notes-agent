@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/route-client";
-import { generateEmbedding, streamChat, SYSTEM_PROMPT } from "@/lib/ai";
+import { generateEmbedding, streamChat } from "@/lib/ai";
 import type { ChatFilters } from "@/lib/types";
 
 export async function POST(
@@ -78,20 +78,18 @@ export async function POST(
     .limit(20);
 
   const messages = [
-    {
-      role: "system" as const,
-      content: contextText
-        ? `${SYSTEM_PROMPT}\n\n## User's saved content (use as context):\n\n${contextText}`
-        : SYSTEM_PROMPT,
-    },
     ...(history || []).map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
     })),
   ];
 
+  const effectiveContext = contextText
+    ? contextText
+    : "Note: No matching saved content found. Answering from general knowledge.";
+
   try {
-    const stream = await streamChat(messages, "", "fast");
+    const stream = await streamChat(messages, effectiveContext, "fast");
     
     const chunks: string[] = [];
     const transformStream = new TransformStream<Uint8Array, Uint8Array>({

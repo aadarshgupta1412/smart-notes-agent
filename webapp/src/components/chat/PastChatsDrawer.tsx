@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, Trash2, Clock, X } from "lucide-react";
+import { MessageSquare, Trash2, Clock, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,12 +11,14 @@ import type { Chat } from "@/lib/types";
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSelectChat: (chat: Chat) => void;
+  activeChatId: string | null;
+  onSelectChat: (chat: Chat | null) => void;
 }
 
-export default function PastChatsDrawer({ open, onClose, onSelectChat }: Props) {
+export default function PastChatsDrawer({ open, onClose, activeChatId, onSelectChat }: Props) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,9 +45,18 @@ export default function PastChatsDrawer({ open, onClose, onSelectChat }: Props) 
 
   const handleDelete = async (e: React.MouseEvent, chatId: string) => {
     e.stopPropagation();
-    await fetch(`/api/chats/${chatId}`, { method: "DELETE" });
-    setChats((prev) => prev.filter((c) => c.id !== chatId));
+    const res = await fetch(`/api/chats/${chatId}`, { method: "DELETE" });
+    if (res.ok) {
+      setChats((prev) => prev.filter((c) => c.id !== chatId));
+      if (chatId === activeChatId) {
+        onSelectChat(null);
+      }
+    }
   };
+
+  const filteredChats = chats.filter((c) =>
+    c.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -90,6 +101,19 @@ export default function PastChatsDrawer({ open, onClose, onSelectChat }: Props) 
           </Button>
         </div>
 
+        <div className="px-3 pt-3 pb-1">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search chats..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 text-sm bg-secondary border border-border rounded-md focus:outline-none focus:border-primary placeholder:text-muted-foreground"
+            />
+          </div>
+        </div>
+
         <ScrollArea className="flex-1">
           <div className="p-2">
             {loading && (
@@ -116,9 +140,15 @@ export default function PastChatsDrawer({ open, onClose, onSelectChat }: Props) 
               </div>
             )}
 
-            {!loading && chats.length > 0 && (
+            {!loading && chats.length > 0 && filteredChats.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                <p className="text-sm text-muted-foreground">No matching chats</p>
+              </div>
+            )}
+
+            {!loading && filteredChats.length > 0 && (
               <div className="flex flex-col gap-0.5">
-                {chats.map((chat) => (
+                {filteredChats.map((chat) => (
                   <div
                     key={chat.id}
                     role="button"
