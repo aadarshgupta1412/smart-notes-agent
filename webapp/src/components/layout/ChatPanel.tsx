@@ -211,7 +211,7 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
     onChatChange(resolvedChatId);
 
     // Throttled streaming: flush accumulated text to React every FLUSH_MS
-    const FLUSH_MS = 30;
+    const FLUSH_MS = 8;
     let accumulated = "";
     let flushTimer: ReturnType<typeof setTimeout> | null = null;
     let lastFlushTime = 0;

@@ -17,9 +17,9 @@ export default function MarkdownRenderer({ content, className, isStreaming = fal
       <Streamdown
         plugins={{ code }}
         animated={{
-          animation: "blurIn",
-          duration: 200,
-          easing: "ease-out",
+          animation: "fadeIn",
+          duration: 10,
+          easing: "linear",
           sep: "word",
         }}
         caret={isStreaming ? "block" : undefined}
