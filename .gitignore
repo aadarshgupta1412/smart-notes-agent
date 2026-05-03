@@ -48,3 +48,11 @@ docker-compose.override.yml
 supabase/.branches
 supabase/.temp
 
+# Agent / IDE skill configs (local/personal)
+.agents/
+.claude/
+.cursor/
+.kiro/
+.windsurf/
+skills-lock.json
+
