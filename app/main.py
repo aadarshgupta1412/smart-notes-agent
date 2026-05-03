@@ -5,7 +5,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import APP_NAME
-from app.routers import notes, agent
+from app.routers import notes, agent, llm
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -32,6 +32,7 @@ app.add_middleware(
 # Register routers
 app.include_router(notes.router)
 app.include_router(agent.router)
+app.include_router(llm.router)
 
 
 @app.get("/", tags=["root"])
@@ -61,6 +62,25 @@ async def health_check():
         "status": "healthy",
         "service": APP_NAME
     }
+
+
+@app.get("/db-test", tags=["root"])
+async def db_test():
+    """
+    Test Supabase database connection
+    """
+    try:
+        from app.db import get_supabase_client
+        client = get_supabase_client()
+        result = client.table("profiles").select("id, email, name").limit(5).execute()
+        return {
+            "status": "connected",
+            "profiles_count": len(result.data),
+            "profiles": result.data
+        }
+    except Exception as e:
+        logger.error(f"Database test failed: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 # Application startup event

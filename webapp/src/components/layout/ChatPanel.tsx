@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Menu, Plus, Send, Loader2, Sparkles, X, MessageSquare, Zap, BookOpen } from "lucide-react";
+import { History, Plus, Send, Loader2, X, MessageSquare } from "lucide-react";
 import PastChatsDrawer from "@/components/chat/PastChatsDrawer";
 import MentionDropdown from "@/components/chat/MentionDropdown";
+import MarkdownRenderer from "@/components/chat/MarkdownRenderer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { OrbitRing } from "@/components/loading-ui/orbit-ring";
 import { cn } from "@/lib/utils";
 import type { Chat, ChatFilters, Message } from "@/lib/types";
 
@@ -19,10 +20,11 @@ interface Props {
 
 function TypingIndicator() {
   return (
-    <div className="flex items-center gap-1 px-2">
-      <div className="typing-dot size-2 rounded-full bg-muted-foreground/60" />
-      <div className="typing-dot size-2 rounded-full bg-muted-foreground/60" />
-      <div className="typing-dot size-2 rounded-full bg-muted-foreground/60" />
+    <div className="flex items-center gap-2.5 py-2">
+      <OrbitRing className="size-5 text-primary" style={{ "--duration": "0.8s" } as React.CSSProperties} />
+      <span className="text-sm italic shimmer-text">
+        firing neurons...
+      </span>
     </div>
   );
 }
@@ -42,7 +44,23 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
   const [showMention, setShowMention] = useState(false);
   const [mentionFilters, setMentionFilters] = useState<ChatFilters>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Internal chat ID — avoids race conditions with URL-driven re-renders
+  const [localChatId, setLocalChatId] = useState<string | null>(activeChatId);
+  const streamingChatIdRef = useRef<string | null>(null);
+
+  // Track whether user has manually scrolled up during streaming
+  const userScrolledUpRef = useRef(false);
+
+  // Sync prop → local only when NOT mid-stream
+  useEffect(() => {
+    if (!streamingChatIdRef.current) {
+      setLocalChatId(activeChatId);
+    }
+  }, [activeChatId]);
 
   const effectiveFilters: ChatFilters = {
     folderIds: [
@@ -55,42 +73,74 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
     ].filter(Boolean),
   };
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // Grab the scrollable viewport scoped to THIS chat panel
+  useEffect(() => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+    const vp = container.querySelector('[data-slot="scroll-area-viewport"]');
+    if (vp) scrollViewportRef.current = vp as HTMLElement;
   }, []);
 
+  // Detect when user scrolls up during streaming
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    const viewport = scrollViewportRef.current;
+    if (!viewport) return;
 
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = viewport;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+      if (isStreaming && distanceFromBottom > 80) {
+        userScrolledUpRef.current = true;
+      } else if (distanceFromBottom < 30) {
+        userScrolledUpRef.current = false;
+      }
+    };
+
+    viewport.addEventListener("scroll", handleScroll, { passive: true });
+    return () => viewport.removeEventListener("scroll", handleScroll);
+  }, [isStreaming]);
+
+  const scrollToBottom = useCallback((instant?: boolean) => {
+    const viewport = scrollViewportRef.current;
+    if (!viewport) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+    viewport.scrollTo({
+      top: viewport.scrollHeight,
+      behavior: instant ? "instant" : "smooth",
+    });
+  }, []);
+
+  // Scroll on new messages (non-streaming: user sends, chat loads)
   useEffect(() => {
-    if (!activeChatId) {
+    if (!isStreaming) {
+      scrollToBottom(false);
+    }
+  }, [messages, isStreaming, scrollToBottom]);
+
+  // Load chat when localChatId changes — skip if we're streaming into it
+  useEffect(() => {
+    if (!localChatId) {
       setMessages([]);
       setChatTitle("New Chat");
       return;
     }
+    if (streamingChatIdRef.current === localChatId) return;
+
+    let cancelled = false;
     async function loadChat() {
-      const res = await fetch(`/api/chats/${activeChatId}`);
-      if (res.ok) {
+      const res = await fetch(`/api/chats/${localChatId}`);
+      if (res.ok && !cancelled) {
         const data = await res.json();
         setChatTitle(data.title);
         setMessages(data.messages || []);
       }
     }
     loadChat();
-  }, [activeChatId]);
-
-  const createNewChat = async (): Promise<string> => {
-    const res = await fetch("/api/chats", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: input.slice(0, 50) || "New Chat" }),
-    });
-    const data = await res.json();
-    onChatChange(data.id);
-    setChatTitle(data.title);
-    return data.id;
-  };
+    return () => { cancelled = true; };
+  }, [localChatId]);
 
   const handleSend = async (messageOverride?: string) => {
     const messageToSend = messageOverride || input.trim();
@@ -99,35 +149,81 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
     setInput("");
     setShowMention(false);
 
-    let chatId = activeChatId;
+    let chatId = localChatId;
+
     if (!chatId) {
-      chatId = await createNewChat();
+      const res = await fetch("/api/chats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: messageToSend.slice(0, 50) }),
+      });
+      const data = await res.json();
+      chatId = data.id as string;
+      setChatTitle(data.title);
     }
+
+    const resolvedChatId = chatId;
+
+    streamingChatIdRef.current = resolvedChatId;
+    setLocalChatId(resolvedChatId);
+    userScrolledUpRef.current = false;
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
-      chat_id: chatId,
+      chat_id: resolvedChatId,
       user_id: "",
       role: "user",
       content: messageToSend,
       created_at: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, userMsg]);
-
-    setIsStreaming(true);
-
     const assistantMsg: Message = {
       id: crypto.randomUUID(),
-      chat_id: chatId,
+      chat_id: resolvedChatId,
       user_id: "",
       role: "assistant",
       content: "",
       created_at: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, assistantMsg]);
+
+    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setIsStreaming(true);
+    onChatChange(resolvedChatId);
+
+    // Throttled streaming: flush accumulated text to React every FLUSH_MS
+    const FLUSH_MS = 30;
+    let accumulated = "";
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastFlushTime = 0;
+
+    const flushToReact = () => {
+      flushTimer = null;
+      lastFlushTime = Date.now();
+      const snapshot = accumulated;
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastMsg = updated[updated.length - 1];
+        if (lastMsg?.role === "assistant") {
+          updated[updated.length - 1] = { ...lastMsg, content: snapshot };
+        }
+        return updated;
+      });
+      if (!userScrolledUpRef.current) {
+        scrollToBottom(true);
+      }
+    };
+
+    const scheduleFlush = () => {
+      if (flushTimer) return;
+      const elapsed = Date.now() - lastFlushTime;
+      if (elapsed >= FLUSH_MS) {
+        flushToReact();
+      } else {
+        flushTimer = setTimeout(flushToReact, FLUSH_MS - elapsed);
+      }
+    };
 
     try {
-      const res = await fetch(`/api/chats/${chatId}/messages`, {
+      const res = await fetch(`/api/chats/${resolvedChatId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -139,47 +235,26 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to send message");
-      }
+      if (!res.ok) throw new Error("Failed to send message");
 
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
-      let accumulated = "";
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
-
-          for (const line of lines) {
-            if (line.startsWith("0:")) {
-              try {
-                const textContent = JSON.parse(line.slice(2));
-                accumulated += textContent;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  const lastMsg = updated[updated.length - 1];
-                  if (lastMsg?.role === "assistant") {
-                    updated[updated.length - 1] = {
-                      ...lastMsg,
-                      content: accumulated,
-                    };
-                  }
-                  return updated;
-                });
-              } catch {
-                // skip non-text stream events
-              }
-            }
-          }
+          accumulated += decoder.decode(value, { stream: true });
+          scheduleFlush();
         }
       }
+
+      // Final flush to ensure all content is rendered
+      if (flushTimer) clearTimeout(flushTimer);
+      flushToReact();
     } catch (err) {
       console.error("Chat error:", err);
+      if (flushTimer) clearTimeout(flushTimer);
       setMessages((prev) => {
         const updated = [...prev];
         const lastMsg = updated[updated.length - 1];
@@ -193,7 +268,12 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
       });
     }
 
+    streamingChatIdRef.current = null;
     setIsStreaming(false);
+    // Final smooth scroll after streaming ends
+    if (!userScrolledUpRef.current) {
+      requestAnimationFrame(() => scrollToBottom(false));
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -247,6 +327,8 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
   };
 
   const handleNewChat = () => {
+    streamingChatIdRef.current = null;
+    setLocalChatId(null);
     onChatChange(null);
     setMessages([]);
     setChatTitle("New Chat");
@@ -260,75 +342,56 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
   ];
 
   return (
-    <div className="flex flex-col h-full relative bg-background">
+    <div ref={chatContainerRef} className="relative flex flex-col h-full bg-background overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/50 backdrop-blur-sm">
-        <Tooltip>
-          <TooltipTrigger>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={handleNewChat} 
-              className="size-9 hover:bg-primary/10 hover:text-primary"
-            >
-              <Plus className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>New chat</TooltipContent>
-        </Tooltip>
-        
-        <div className="flex items-center gap-2">
-          <MessageSquare className="size-4 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground truncate">{chatTitle}</h2>
-        </div>
-        
-        <Tooltip>
-          <TooltipTrigger>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setDrawerOpen(true)}
-              className="size-9 hover:bg-accent"
-            >
-              <Menu className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Past chats</TooltipContent>
-        </Tooltip>
+      <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleNewChat}
+          className="size-8 hover:bg-secondary"
+          title="New chat"
+        >
+          <Plus className="size-4" />
+        </Button>
+
+        <span className="text-sm font-medium text-foreground truncate px-4">
+          {chatTitle}
+        </span>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setDrawerOpen(true)}
+          className="size-8 hover:bg-secondary"
+          title="Chat history"
+        >
+          <History className="size-4" />
+        </Button>
       </div>
 
-      {/* Messages area */}
+      {/* Messages */}
       <ScrollArea className="flex-1">
-        <div className="px-4 py-6 max-w-3xl mx-auto">
+        <div className="px-4 py-6 max-w-2xl mx-auto">
           <div className="flex flex-col gap-4">
-            {/* Empty state */}
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center animate-fade-in">
-                {/* Gradient icon container */}
-                <div className="relative mb-6">
-                  <div className="size-20 rounded-2xl gradient-primary flex items-center justify-center shadow-lg glow-primary">
-                    <Sparkles className="size-10 text-white" />
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 size-8 rounded-lg bg-purple-500 flex items-center justify-center shadow-md">
-                    <Zap className="size-4 text-white" />
-                  </div>
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+                <div className="size-10 rounded-lg bg-secondary flex items-center justify-center mb-4">
+                  <MessageSquare className="size-5 text-muted-foreground" />
                 </div>
-                
-                <h3 className="text-xl font-semibold text-foreground mb-2">
-                  Ask AI about your knowledge
+                <h3 className="text-base font-semibold text-foreground mb-1">
+                  Ask about your knowledge
                 </h3>
-                <p className="text-sm text-muted-foreground max-w-md mb-8">
-                  Chat with your saved highlights and bookmarks. Use <kbd className="kbd">@folder</kbd> or <kbd className="kbd">@source</kbd> to scope your search.
+                <p className="text-sm text-muted-foreground max-w-sm mb-6">
+                  Chat with your saved highlights and bookmarks.
+                  Type <kbd className="kbd">@</kbd> to scope your search.
                 </p>
-
-                {/* Suggested prompts */}
                 <div className="flex flex-wrap justify-center gap-2">
                   {SUGGESTED_PROMPTS.map((prompt, i) => (
                     <button
                       key={i}
                       onClick={() => handleSend(prompt)}
-                      className="prompt-pill animate-fade-in"
-                      style={{ animationDelay: `${i * 0.1}s` }}
+                      className="px-3 py-1.5 text-xs rounded-md border border-border bg-card text-text-secondary hover:bg-secondary hover:text-foreground transition-colors"
                     >
                       {prompt}
                     </button>
@@ -337,64 +400,47 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
               </div>
             )}
 
-            {/* Messages */}
-            {messages.map((msg, index) => (
-              <div
-                key={msg.id}
-                className={cn(
-                  "flex animate-message",
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                )}
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                {msg.role === "assistant" && (
-                  <div className="size-8 rounded-lg gradient-primary flex items-center justify-center mr-3 mt-1 flex-shrink-0">
-                    <Sparkles className="size-4 text-white" />
-                  </div>
-                )}
-                
-                <div
-                  className={cn(
-                    "max-w-[80%] px-4 py-3 text-sm leading-relaxed",
-                    msg.role === "user"
-                      ? "chat-message-user"
-                      : "chat-message-ai"
-                  )}
-                >
-                  {msg.content ? (
-                    <div className={cn(
-                      "prose prose-sm max-w-none",
-                      msg.role === "user" && "prose-invert",
-                      isStreaming && msg.role === "assistant" && index === messages.length - 1 && "streaming-cursor"
-                    )}>
+            {messages.map((msg, index) => {
+              const isLastAssistantMessage = msg.role === "assistant" && index === messages.length - 1;
+              const isCurrentlyStreaming = isStreaming && isLastAssistantMessage;
+
+              if (msg.role === "user") {
+                return (
+                  <div key={msg.id} className="flex justify-end">
+                    <div className="max-w-[80%] px-3.5 py-2.5 text-sm leading-relaxed bg-chat-user text-chat-user-foreground rounded-2xl rounded-br-md">
                       {msg.content}
                     </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={msg.id} className="text-sm leading-relaxed text-foreground">
+                  {msg.content ? (
+                    <MarkdownRenderer
+                      content={msg.content}
+                      isStreaming={isCurrentlyStreaming}
+                    />
                   ) : (
                     <TypingIndicator />
                   )}
                 </div>
-
-                {msg.role === "user" && (
-                  <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center ml-3 mt-1 flex-shrink-0">
-                    <BookOpen className="size-4 text-primary" />
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         </div>
       </ScrollArea>
 
-      {/* Active mentions bar */}
+      {/* Active mentions */}
       {activeMentions.length > 0 && (
-        <div className="px-4 py-2 border-t border-border/50 bg-muted/30 flex flex-wrap gap-2 animate-fade-in">
-          <span className="text-xs text-muted-foreground self-center">Searching in:</span>
+        <div className="px-4 py-2 border-t border-border flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Scope:</span>
           {activeMentions.map((m) => (
             <Badge
               key={`${m.type}-${m.id}`}
               variant="secondary"
-              className="gap-1.5 pr-1.5 bg-primary/10 text-primary border-primary/20"
+              className="gap-1 pr-1 text-xs"
             >
               @{m.type}
               <button
@@ -411,7 +457,7 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
                     }));
                   }
                 }}
-                className="ml-0.5 rounded-full hover:bg-primary/20 p-0.5 transition-colors"
+                className="ml-0.5 rounded-sm hover:bg-border p-0.5 transition-colors"
               >
                 <X className="size-3" />
               </button>
@@ -420,19 +466,19 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
         </div>
       )}
 
-      {/* Input area */}
-      <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm relative">
+      {/* Input */}
+      <div className="p-3 border-t border-border relative shrink-0">
         {showMention && (
-          <div className="absolute bottom-full left-4 right-4 mb-2 z-10">
+          <div className="absolute bottom-full left-3 right-3 mb-2 z-10">
             <MentionDropdown
               onSelect={handleMentionSelect}
               onClose={() => setShowMention(false)}
             />
           </div>
         )}
-        
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-end gap-3">
+
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-end gap-2">
             <div className="flex-1 relative">
               <textarea
                 ref={inputRef}
@@ -442,42 +488,31 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
                 placeholder="Ask about your saved knowledge..."
                 rows={1}
                 className={cn(
-                  "w-full resize-none px-4 py-3 pr-12",
-                  "bg-muted/50 rounded-xl border border-border/50",
-                  "focus:border-primary/50 focus:bg-background focus:shadow-md",
-                  "focus:outline-none focus:ring-2 focus:ring-primary/20",
+                  "w-full resize-none px-3 py-2.5",
+                  "bg-secondary rounded-lg border border-border",
+                  "focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30",
                   "text-sm max-h-32 overflow-y-auto",
-                  "transition-all duration-200",
+                  "transition-colors",
                   "placeholder:text-muted-foreground"
                 )}
-                style={{ minHeight: "48px" }}
+                style={{ minHeight: "40px" }}
               />
-              <div className="absolute right-3 bottom-3 text-xs text-muted-foreground">
-                <kbd className="kbd text-[10px]">@</kbd>
-              </div>
             </div>
-            
             <Button
               size="icon"
               onClick={() => handleSend()}
               disabled={!input.trim() || isStreaming}
-              className={cn(
-                "size-12 rounded-xl transition-all duration-200",
-                input.trim() && !isStreaming
-                  ? "gradient-primary shadow-md hover:shadow-lg hover:scale-105"
-                  : "bg-muted text-muted-foreground"
-              )}
+              className="size-10 rounded-lg shrink-0 hover:bg-primary-hover"
             >
               {isStreaming ? (
-                <Loader2 className="size-5 animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
               ) : (
-                <Send className="size-5" />
+                <Send className="size-4" />
               )}
             </Button>
           </div>
-          
-          <p className="text-xs text-muted-foreground text-center mt-3">
-            Press <kbd className="kbd">Enter</kbd> to send, <kbd className="kbd">Shift + Enter</kbd> for new line
+          <p className="text-[11px] text-muted-foreground text-center mt-2">
+            <kbd className="kbd">Enter</kbd> to send &middot; <kbd className="kbd">Shift+Enter</kbd> for new line &middot; <kbd className="kbd">@</kbd> to mention
           </p>
         </div>
       </div>
@@ -486,6 +521,8 @@ export default function ChatPanel({ filters, activeChatId, onChatChange }: Props
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onSelectChat={(chat: Chat) => {
+          streamingChatIdRef.current = null;
+          setLocalChatId(chat.id);
           onChatChange(chat.id);
           setDrawerOpen(false);
         }}

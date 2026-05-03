@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { streamText } from "ai";
 import { getAuthenticatedUser } from "@/lib/supabase/route-client";
-import { getChatModel, generateEmbedding, SYSTEM_PROMPT } from "@/lib/ai";
+import { generateEmbedding, streamChat, SYSTEM_PROMPT } from "@/lib/ai";
 import type { ChatFilters } from "@/lib/types";
 
 export async function POST(
@@ -91,23 +90,44 @@ export async function POST(
     })),
   ];
 
-  const result = streamText({
-    model: getChatModel(),
-    messages,
-    async onFinish({ text }) {
-      await supabase.from("messages").insert({
-        chat_id: chatId,
-        user_id: user.id,
-        role: "assistant",
-        content: text,
-      });
+  try {
+    const stream = await streamChat(messages, "", "fast");
+    
+    const chunks: string[] = [];
+    const transformStream = new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        const text = new TextDecoder().decode(chunk);
+        chunks.push(text);
+        controller.enqueue(chunk);
+      },
+      async flush() {
+        const fullText = chunks.join("");
+        await supabase.from("messages").insert({
+          chat_id: chatId,
+          user_id: user.id,
+          role: "assistant",
+          content: fullText,
+        });
+        await supabase
+          .from("chats")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", chatId);
+      },
+    });
 
-      await supabase
-        .from("chats")
-        .update({ updated_at: new Date().toISOString() })
-        .eq("id", chatId);
-    },
-  });
+    const responseStream = stream.pipeThrough(transformStream);
 
-  return result.toDataStreamResponse();
+    return new Response(responseStream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Transfer-Encoding": "chunked",
+      },
+    });
+  } catch (err) {
+    console.error("Chat stream failed:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Chat failed" },
+      { status: 500 }
+    );
+  }
 }

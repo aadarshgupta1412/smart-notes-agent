@@ -1,188 +1,128 @@
-# Smart Notes Agent
+# Knowledge Hub
 
-An AI-powered note management backend built with FastAPI and Google Gemini API. Create notes, manage them with full CRUD operations, and leverage an intelligent agent that can list and summarize your notes using natural language.
+> AI-powered personal knowledge management — save once, retrieve forever through conversation.
 
-## Features
+## What is this?
 
-- **Full CRUD for Notes** - Create, Read, Update, Delete operations
-- **AI Agent** - Natural language queries powered by Google Gemini API
-- **Streaming Support** - Real-time agent thought process visualization
-- **Production-Ready** - Eager singleton initialization, comprehensive error handling
-- **Docker Support** - Complete containerization with docker-compose
-- **Testing UI** - Beautiful single-page interface for testing all endpoints
+A personal knowledge system with two parts:
 
-## Quick Start
+1. **Chrome Extension** — Save highlights or bookmarks from any webpage into organized folders
+2. **Web Application** — Chat with your saved content using AI, with RAG-powered retrieval
 
-### Option 1: Docker (Recommended)
+## How It Works
 
-```bash
-# Verify Docker is installed
-docker --version
-docker-compose --version
-
-# Build and start everything (first time or after code changes)
-docker-compose up --build
-
-# Or just start (if already built)
-docker-compose up
-
-# Access the application
-# Backend:  http://localhost:8000
-# Frontend: http://localhost:3000
-# API Docs: http://localhost:8000/docs
+```
+Capture                    Organize                   Retrieve
+─────────                  ────────                   ────────
+Extension saves            Auto-generates             Ask AI in
+text + metadata    →       embeddings &       →       natural language
+to folder                  summaries                  with @mentions
 ```
 
-### Option 2: Local Development
+## Running Locally
 
-**Backend (Port 8000):**
-```bash
-# 1. Install dependencies
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+### Prerequisites
 
-# 2. Create .env file in project root
-echo "GEMINI_API_KEY=your_api_key_here" > .env
-# Get your API key from: https://makersuite.google.com/app/apikey
+- Node.js 18+, pnpm
+- Python 3.11+, uv
+- Docker Desktop (for local Supabase)
 
-# 3. Run the backend
-uvicorn app.main:app --reload
-```
-
-**Frontend (Port 3000):**
-```bash
-# In a new terminal
-cd frontend
-python3 -m http.server 3000
-
-# Or simply open the file directly
-open frontend/index.html
-```
-
-**Access:**
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
-- Frontend UI: http://localhost:3000
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/notes` | POST | Create a note |
-| `/notes` | GET | List all notes |
-| `/notes/{id}` | GET | Get specific note |
-| `/notes/{id}` | PUT | Update note |
-| `/notes/{id}` | DELETE | Delete note |
-| `/agent/ask` | POST | Query agent (standard) |
-| `/agent/ask/stream` | POST | Query agent (streaming) |
-
-## How to Test
+### 1. Database
 
 ```bash
-# 1. Create a note
-curl -X POST http://localhost:8000/notes \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Project Alpha","content":"Deadline is next Friday. Need to finish API."}'
-
-# 2. List all notes
-curl http://localhost:8000/notes
-
-# 3. Ask agent to summarize (standard)
-curl -X POST http://localhost:8000/agent/ask \
-  -H "Content-Type: application/json" \
-  -d '{"query":"Can you summarize my notes?"}'
-
-# 4. Ask agent with streaming (see real-time thought process)
-curl -N -X POST http://localhost:8000/agent/ask/stream \
-  -H "Content-Type: application/json" \
-  -d '{"query":"Summarize these notes please"}'
+supabase start
+supabase db reset
 ```
 
-**For complete testing guide with all endpoints, see:** [documentation/TEST_ALL_ENDPOINTS.md](documentation/TEST_ALL_ENDPOINTS.md)
-
-## Architecture
-
-**Clean Architecture with:**
-- **Repository Pattern** - Easy database migration (currently in-memory)
-- **Eager Singleton Initialization** - Zero cold start, fail-fast on errors
-- **Layered Design** - Router → Service → Repository
-- **Comprehensive Error Handling** - Graceful API failure handling with retries
-
-## Documentation
-
-- **[Original Specification](documentation/smart-note-agent.md)** - Assignment requirements
-- **[API Testing Guide](documentation/TEST_ALL_ENDPOINTS.md)** - cURL examples for all endpoints
-- **[Docker Setup](documentation/DOCKER.md)** - Container deployment guide
-
-## 🛠️ Tech Stack
-
-- **Backend:** FastAPI, Python 3.13
-- **AI:** Google Gemini API (gemini-2.5-flash)
-- **Storage:** In-memory (repository pattern for easy DB migration)
-- **Frontend:** Vanilla HTML/CSS/JS with Tailwind
-- **Deployment:** Docker & Docker Compose
-
-## Configuration
-
-Create a `.env` file in the project root directory:
+### 2. Web Application
 
 ```bash
-# Create .env file
-cat > .env << EOF
-GEMINI_API_KEY=your_gemini_api_key_here
-EOF
+cd webapp
+pnpm install
+pnpm dev                   # → http://localhost:3000
 ```
 
-**Get your free API key:** https://makersuite.google.com/app/apikey
+### 3. Python Backend (LLM Services)
 
-**Important:** The `.env` file must be in the **project root** (`smart-notes-agent/`), not in subdirectories.
+```bash
+uv sync
+uv run uvicorn app.main:app --reload --port 8000
+```
 
-## Testing UI
+### 4. Chrome Extension
 
-A beautiful testing interface is included at `frontend/index.html`:
-- Test all CRUD operations
-- Try AI agent queries
-- See streaming responses in real-time
-- No build process required
+1. Go to `chrome://extensions`, enable Developer mode
+2. Click "Load unpacked" → select `extension/` folder
 
-## Troubleshooting
+### Test Credentials (Local Dev)
 
-**Server won't start?**
-- Check `GEMINI_API_KEY` in `.env`
-- Ensure Python 3.10+ installed
-- Verify port 8000 is available
+```
+Email: test@example.com
+Password: password123
+```
 
-**AI not working?**
-- Verify API key is valid
-- Check logs for specific errors
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 15, TypeScript, Tailwind CSS, shadcn/ui |
+| Streaming Markdown | Streamdown v2 (blurIn animation, block caret, Shiki highlighting) |
+| Loading Indicators | loading-ui registry (OrbitRing) |
+| Drag & Drop | @dnd-kit/react |
+| LLM Backend | Python FastAPI, provider-agnostic (OpenAI, Anthropic, Gemini, Azure, Mistral) |
+| Database | Supabase (PostgreSQL + pgvector + Auth) |
+| Extension | Chrome Manifest V3 |
+| Package Managers | pnpm (Node), uv (Python) |
 
 ## Project Structure
 
 ```
 smart-notes-agent/
-├── app/                    # Backend application
-│   ├── models/            # Pydantic models
-│   ├── repositories/      # Data access layer (Repository Pattern)
-│   ├── routers/           # API endpoints
-│   └── services/          # Business logic & AI integration
-├── frontend/              # Testing UI (single HTML file)
-├── tests/                 # Pytest test suite
-├── documentation/         # API docs & guides
-├── Dockerfile            # Docker configuration
-└── docker-compose.yml    # Docker Compose setup
+├── webapp/                 # Next.js frontend + API routes
+│   └── src/
+│       ├── app/            # Pages, API routes, globals.css
+│       ├── components/
+│       │   ├── layout/     # LeftPanel, ChatPanel
+│       │   ├── chat/       # MarkdownRenderer, PastChatsDrawer
+│       │   ├── loading-ui/ # OrbitRing, CometSpinner, TwinOrbit
+│       │   └── ui/         # shadcn components
+│       └── lib/            # Supabase clients, AI utils, types
+├── app/                    # Python FastAPI backend
+│   ├── llm/                # Provider interface + implementations
+│   ├── routers/            # /llm/* endpoints
+│   └── main.py
+├── supabase/               # Migrations, seed data, config
+├── extension/              # Chrome extension (Manifest V3)
+└── documentation/          # ARCHITECTURE.md, DESIGN.md, PRODUCT.md
 ```
 
-## Tests
+## Environment Variables
 
-Run the test suite:
-```bash
-pytest -v
+### Frontend (`webapp/.env.development.local`)
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<local-service-key>
+BACKEND_API_URL=http://127.0.0.1:8000
 ```
 
-Tests cover: CRUD operations, Agent routing, Streaming, Repository Pattern. See [`tests/README.md`](tests/README.md) for details.
+### Backend (`app/.env`)
 
-## License
+```env
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_SERVICE_ROLE_KEY=<local-service-key>
 
-Educational/Assessment Project
+# At least one LLM provider required
+GOOGLE_API_KEY=<your-key>
+OPENAI_API_KEY=<your-key>
+AZURE_API_KEY=<your-key>
+AZURE_API_BASE=<your-endpoint>
+```
 
----
+## Documentation
+
+- **[Product Context](documentation/PRODUCT.md)** — Vision, features, user journeys
+- **[Architecture](documentation/ARCHITECTURE.md)** — System design, data flows, API endpoints
+- **[Design System](documentation/DESIGN.md)** — Colors, typography, components, animations
+- **[API Testing](documentation/TEST_ALL_ENDPOINTS.md)** — cURL examples for all endpoints

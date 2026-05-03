@@ -1,81 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Moon, Sun, Monitor } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-type Theme = "light" | "dark" | "system";
+import { Moon, Sun } from "lucide-react";
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("system");
+  const [dark, setDark] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem("theme") as Theme | null;
-    if (stored) {
-      setTheme(stored);
-    }
+    setDark(document.documentElement.classList.contains("dark"));
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-
-    const root = document.documentElement;
-    root.classList.add("transitioning");
-
-    const applyTheme = (isDark: boolean) => {
-      if (isDark) {
-        root.classList.add("dark");
-      } else {
-        root.classList.remove("dark");
-      }
-    };
-
-    if (theme === "system") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      applyTheme(mediaQuery.matches);
-
-      const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
-      mediaQuery.addEventListener("change", handler);
-      localStorage.removeItem("theme");
-
-      setTimeout(() => root.classList.remove("transitioning"), 300);
-      return () => mediaQuery.removeEventListener("change", handler);
-    } else {
-      applyTheme(theme === "dark");
-      localStorage.setItem("theme", theme);
-    }
-
-    setTimeout(() => root.classList.remove("transitioning"), 300);
-  }, [theme, mounted]);
-
-  const cycleTheme = () => {
-    const themes: Theme[] = ["light", "dark", "system"];
-    const currentIndex = themes.indexOf(theme);
-    const nextIndex = (currentIndex + 1) % themes.length;
-    setTheme(themes[nextIndex]);
+  const toggle = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
   };
 
-  if (!mounted) {
-    return (
-      <Button variant="ghost" size="icon" className="h-9 w-9">
-        <Sun className="h-4 w-4" />
-      </Button>
-    );
-  }
+  if (!mounted) return null;
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={cycleTheme}
-      className="h-9 w-9 relative"
-      aria-label={`Current theme: ${theme}. Click to change.`}
+    <button
+      onClick={toggle}
+      className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
     >
-      {theme === "light" && <Sun className="h-4 w-4 text-amber-500" />}
-      {theme === "dark" && <Moon className="h-4 w-4 text-indigo-400" />}
-      {theme === "system" && <Monitor className="h-4 w-4 text-muted-foreground" />}
-    </Button>
+      {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+      <span className="text-xs">{dark ? "Light" : "Dark"}</span>
+    </button>
   );
 }

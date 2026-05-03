@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "impeccable": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "computedHash": "bd24f9b2f67dfdac55f76a85877ce302fe75d6204d2b329d3d05342904abf336"
+    },
+    "kami": {
+      "source": "tw93/kami",
+      "sourceType": "github",
+      "computedHash": "2d60de85bf30c7e82bafdb538703ed215fb5e864fc92f83f8c77c8bd19420ec5"
+    }
+  }
+}

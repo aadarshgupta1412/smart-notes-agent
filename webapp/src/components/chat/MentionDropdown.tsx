@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Folder, Source } from "@/lib/types";
 
@@ -15,7 +14,7 @@ interface Props {
   onClose: () => void;
 }
 
-type MentionItem = 
+type MentionItem =
   | { type: "folder"; data: Folder }
   | { type: "source"; data: Source };
 
@@ -104,40 +103,34 @@ export default function MentionDropdown({ onSelect, onClose }: Props) {
   return (
     <Card
       ref={containerRef}
-      className="shadow-xl border-border/50 overflow-hidden animate-slide-up bg-card/95 backdrop-blur-glass"
+      className="shadow-md border-border overflow-hidden"
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Header */}
-      <div className="px-3 py-2 border-b border-border/50 bg-muted/30">
+      <div className="px-3 py-1.5 border-b border-border">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Search className="size-3" />
-          <span>Type to filter, use <kbd className="kbd text-[10px]">↑↓</kbd> to navigate</span>
+          <span>Use <kbd className="kbd text-[10px]">↑↓</kbd> to navigate</span>
         </div>
       </div>
 
-      <ScrollArea className="max-h-72">
+      <ScrollArea className="max-h-64">
         {loading ? (
-          <div className="p-3 flex flex-col gap-2">
+          <div className="p-2 flex flex-col gap-1">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div 
-                key={i} 
-                className="flex items-center gap-3 px-2 py-2 rounded-lg"
-                style={{ animationDelay: `${i * 0.05}s` }}
-              >
-                <Skeleton className="size-8 rounded-lg" />
-                <div className="flex-1 flex flex-col gap-1.5">
-                  <Skeleton className="h-4 w-3/4" />
+              <div key={i} className="flex items-center gap-3 px-2 py-2">
+                <Skeleton className="size-6 rounded" />
+                <div className="flex-1 flex flex-col gap-1">
+                  <Skeleton className="h-3.5 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="p-2">
-            {/* Folders section */}
+          <div className="p-1.5">
             {folders.length > 0 && (
-              <div className="mb-2">
-                <p className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="mb-1">
+                <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                   Folders
                 </p>
                 {folders.map((folder) => {
@@ -148,23 +141,15 @@ export default function MentionDropdown({ onSelect, onClose }: Props) {
                       key={folder.id}
                       onClick={() => onSelect("folder", folder.id, folder.name)}
                       className={cn(
-                        "w-full flex items-center gap-3 px-2 py-2 rounded-lg",
-                        "transition-all duration-150 text-left",
+                        "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left transition-colors",
                         selectedIndex === itemIndex
-                          ? "bg-primary/10 text-primary"
-                          : "hover:bg-muted"
+                          ? "bg-accent text-accent-foreground"
+                          : "hover:bg-secondary"
                       )}
                     >
-                      <div className={cn(
-                        "size-8 rounded-lg flex items-center justify-center",
-                        selectedIndex === itemIndex
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400"
-                      )}>
-                        <FolderIcon className="size-4" />
-                      </div>
+                      <FolderIcon className="size-3.5 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{folder.name}</p>
+                        <p className="text-sm truncate">{folder.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {folder.source_count ?? 0} items
                         </p>
@@ -176,13 +161,12 @@ export default function MentionDropdown({ onSelect, onClose }: Props) {
             )}
 
             {folders.length > 0 && sources.length > 0 && (
-              <Separator className="my-2" />
+              <Separator className="my-1" />
             )}
 
-            {/* Sources section */}
             {sources.length > 0 && (
               <div>
-                <p className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                   Recent Sources
                 </p>
                 {sources.slice(0, 10).map((source) => {
@@ -195,58 +179,34 @@ export default function MentionDropdown({ onSelect, onClose }: Props) {
                         onSelect("source", source.id, source.title || source.url)
                       }
                       className={cn(
-                        "w-full flex items-center gap-3 px-2 py-2 rounded-lg",
-                        "transition-all duration-150 text-left",
+                        "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left transition-colors",
                         selectedIndex === itemIndex
-                          ? "bg-primary/10 text-primary"
-                          : "hover:bg-muted"
+                          ? "bg-accent text-accent-foreground"
+                          : "hover:bg-secondary"
                       )}
                     >
-                      <div className={cn(
-                        "size-8 rounded-lg flex items-center justify-center",
-                        source.type === "highlight"
-                          ? selectedIndex === itemIndex
-                            ? "bg-amber-500 text-white"
-                            : "bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                          : selectedIndex === itemIndex
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
-                      )}>
-                        {source.type === "highlight" ? (
-                          <Highlighter className="size-4" />
-                        ) : (
-                          <Globe className="size-4" />
-                        )}
-                      </div>
+                      {source.type === "highlight" ? (
+                        <Highlighter className="size-3.5 text-highlight shrink-0" />
+                      ) : (
+                        <Globe className="size-3.5 shrink-0" />
+                      )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
+                        <p className="text-sm truncate">
                           {source.title || "Untitled"}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
                           {getDomain(source.url)}
                         </p>
                       </div>
-                      <Badge 
-                        variant="secondary" 
-                        className={cn(
-                          "text-[10px] capitalize",
-                          source.type === "highlight" && "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400"
-                        )}
-                      >
-                        {source.type}
-                      </Badge>
                     </button>
                   );
                 })}
               </div>
             )}
 
-            {/* Empty state */}
             {folders.length === 0 && sources.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                <div className="size-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
-                  <Search className="size-5 text-muted-foreground" />
-                </div>
+              <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
+                <Search className="size-5 text-muted-foreground/50 mb-2" />
                 <p className="text-sm font-medium text-foreground mb-1">Nothing to mention</p>
                 <p className="text-xs text-muted-foreground">
                   Create folders or save sources first

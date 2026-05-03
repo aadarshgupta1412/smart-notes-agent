@@ -1,50 +1,96 @@
-## Cursor Cloud specific instructions
+# Agent Memory
+
+## Knowledge Hub (Primary Project)
 
 ### Overview
 
-Smart Notes Agent is a FastAPI backend (port 8000) with a static HTML frontend (port 3000). Uses in-memory storage (no database). See `README.md` for full architecture and API reference.
+Knowledge Hub is a personal knowledge management system with:
+- **Web App** (`webapp/`): Next.js 15 frontend
+- **Python Backend** (`app/`): FastAPI for LLM services
+- **Chrome Extension** (`extension/`): Content capture
+- **Database**: Supabase (PostgreSQL + pgvector)
 
-### Running services
+### Running Locally
 
-- **Backend:** `source venv/bin/activate && uvicorn app.main:app --reload --port 8000`
-- **Frontend:** `cd frontend && python3 -m http.server 3000`
-
-### Environment
-
-A `.env` file must exist in the project root with `GEMINI_API_KEY=<value>`. The app's `config.py` raises `ValueError` at import time if this key is missing, so even tests need it present (tests mock the LLM, but the config validation still fires during import).
-
-For running tests without a real API key, set `GEMINI_API_KEY=dummy_key_for_testing` in `.env`.
-
-### Testing
-
-- `pytest -v` — runs 15 tests; all LLM calls are mocked in `tests/conftest.py`.
-- 1 pre-existing test failure: `test_streaming_event_types` expects event type `"final"` but app emits `"agent_complete"`.
-
-### Linting
-
-No linter is configured in the repo. `ruff check .` can be used (installed in the venv). There are 8 pre-existing unused-import warnings.
-
-### Key gotchas
-
-- Python 3.12 works fine despite `Dockerfile` specifying 3.13.
-- The `GEMINI_API_KEY` env var must be set before importing any app module (config.py validates at module load time, not at request time).
-- The agent `/agent/ask` endpoint uses keyword detection ("list", "summarize") to route queries — it does not always call the Gemini API for every request.
-
-### Knowledge Hub (webapp + extension)
-
-The `webapp/` directory contains a Next.js 15 app (Knowledge Hub) and `extension/` contains a Chrome extension (Manifest V3). See `webapp/SETUP.md` for full setup.
-
-**Running the web app:**
 ```bash
-cd webapp && npm install && npm run dev
+# Start local Supabase (requires Docker)
+supabase start
+
+# Start Python backend (port 8001)
+cd app && uv run uvicorn app.main:app --reload --port 8001
+
+# Start Next.js frontend (port 3000)
+cd webapp && pnpm dev
 ```
 
-**Key points:**
-- Requires Supabase project, Google OAuth credentials, and OpenAI API key. See `webapp/.env.local.example`.
-- Run `supabase/migrations/001_initial_schema.sql` in Supabase SQL Editor before first use.
-- The `@supabase/ssr` cookie handling uses explicit types for `setAll` params — do not remove the type annotations.
-- The OpenAI client in `src/lib/ai.ts` is lazily initialized to avoid build-time errors when env vars are missing.
-- The chat streaming uses the Vercel AI SDK (`ai` + `@ai-sdk/openai`) with `streamText` for server-side streaming.
-- The extension communicates with the web app's API routes, authenticating via Bearer token from Supabase Auth.
-- Google OAuth redirect URI must be `https://<project-id>.supabase.co/auth/v1/callback` (set in GCP Credentials + Supabase Auth → Providers → Google).
-- The extension `manifest.json` must not have an empty `"key": ""` field — Chrome rejects it on "Load unpacked". It was removed; do not re-add it.
+### Environment Setup
+
+**Backend (`app/.env`):**
+```env
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_SERVICE_ROLE_KEY=<from supabase start>
+GOOGLE_API_KEY=<your-key>  # or OPENAI_API_KEY, AZURE_API_KEY
+```
+
+**Frontend (`webapp/.env.development.local`):**
+```env
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<from supabase start>
+BACKEND_API_URL=http://127.0.0.1:8001
+```
+
+### Test Credentials (Local Dev)
+- Email: `test@example.com`
+- Password: `password123`
+
+### Key Technical Details
+
+**LLM Architecture:**
+- Provider-agnostic interface in `app/llm/`
+- Auto-configures from env vars (Azure → Google → OpenAI)
+- Embedding fallback: Azure chat + Google embeddings
+- Streaming via FastAPI `StreamingResponse`
+
+**Frontend:**
+- Streamdown for AI-optimized markdown rendering
+- URL-based chat routing (`/dashboard?chat=<id>`)
+- Resizable/reorderable two-panel layout
+- base-ui tooltips with `asChild` via `render` prop
+
+**Design System:**
+- Warm, paper-like aesthetic (no cold whites)
+- WCAG AA compliant colors
+- DM Sans body, JetBrains Mono code
+- See `documentation/DESIGN.md`
+
+### Common Issues
+
+1. **Nested button hydration error**: Use `asChild` on `TooltipTrigger` or change `<button>` to `<div role="button">`
+2. **Shiki version mismatch**: Install `shiki@3.23.0` for `@streamdown/code`
+3. **CSS @apply with opacity**: Can't use `hover:text-primary/80` in `@apply`, use separate `:hover` rule
+4. **Supabase auth error**: Ensure `auth.users` seed has all required columns including `email_change`, `recovery_token`
+
+### Documentation
+
+- `documentation/smart-note-agent.md` - Main README
+- `documentation/DESIGN.md` - Design system
+- `documentation/ARCHITECTURE.md` - System architecture
+- `documentation/PRODUCT.md` - Product context
+
+---
+
+## Legacy: Smart Notes Agent (FastAPI Demo)
+
+The root `app/` directory also contains a legacy FastAPI demo with in-memory storage. This is separate from the Knowledge Hub LLM backend.
+
+**Running:**
+```bash
+source venv/bin/activate && uvicorn app.main:app --reload --port 8000
+```
+
+**Testing:**
+```bash
+pytest -v  # 15 tests, LLM calls mocked
+```
+
+Requires `GEMINI_API_KEY` in `.env` (can be dummy value for tests).
