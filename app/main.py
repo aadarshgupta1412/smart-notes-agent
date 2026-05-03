@@ -1,6 +1,7 @@
 """
 Smart Notes Agent - FastAPI Application Entry Point
 """
+
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -18,6 +19,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"{APP_NAME} is starting up...")
     try:
         from app.dependencies import initialize_services
+
         initialize_services()
         logger.info("All services initialized")
         logger.info(f"{APP_NAME} startup complete")
@@ -29,6 +31,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"{APP_NAME} is shutting down...")
     try:
         from app.dependencies import shutdown_services
+
         shutdown_services()
     except Exception as e:
         logger.warning(f"Error during shutdown: {e}", exc_info=True)
@@ -72,10 +75,7 @@ async def root():
         "message": f"Welcome to {APP_NAME}",
         "status": "running",
         "docs": "/docs",
-        "endpoints": {
-            "notes": "/notes",
-            "agent": "/agent/ask"
-        }
+        "endpoints": {"notes": "/notes", "agent": "/agent/ask"},
     }
 
 
@@ -85,10 +85,7 @@ async def health_check():
     Health check endpoint for monitoring
     """
     logger.info("Health check endpoint accessed")
-    return {
-        "status": "healthy",
-        "service": APP_NAME
-    }
+    return {"status": "healthy", "service": APP_NAME}
 
 
 @app.get("/db-test", tags=["root"])
@@ -98,12 +95,13 @@ async def db_test():
     """
     try:
         from app.db import get_supabase_client
+
         client = get_supabase_client()
         result = client.table("profiles").select("id, email, name").limit(5).execute()
         return {
             "status": "connected",
             "profiles_count": len(result.data),
-            "profiles": result.data
+            "profiles": result.data,
         }
     except Exception as e:
         logger.error(f"Database test failed: {e}")
@@ -112,11 +110,7 @@ async def db_test():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
 
+    uvicorn.run(
+        "app.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info"
+    )

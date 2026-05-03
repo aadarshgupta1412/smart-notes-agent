@@ -1,9 +1,13 @@
 """Embedding generation endpoints."""
+
 import logging
-from fastapi import APIRouter, HTTPException, Header, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional
-from app.services.embedding_service import generate_and_store_embedding, auto_categorize_source
+from app.services.embedding_service import (
+    generate_and_store_embedding,
+    auto_categorize_source,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/embeddings", tags=["embeddings"])
@@ -25,7 +29,9 @@ class CategorizeRequest(BaseModel):
 
 
 @router.post("/generate")
-async def generate_embedding(req: EmbedSourceRequest, background_tasks: BackgroundTasks):
+async def generate_embedding(
+    req: EmbedSourceRequest, background_tasks: BackgroundTasks
+):
     """Queue embedding generation for a source or highlight."""
     background_tasks.add_task(
         generate_and_store_embedding,

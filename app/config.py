@@ -1,6 +1,7 @@
 """
 Application Configuration and Logging Setup
 """
+
 import os
 import logging
 from dotenv import load_dotenv

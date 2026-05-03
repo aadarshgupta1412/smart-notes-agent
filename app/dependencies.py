@@ -8,6 +8,7 @@ Benefits:
 - Reduced latency on first request
 - Predictable behavior in production
 """
+
 import logging
 from typing import Optional
 from app.repositories.in_memory import InMemoryNoteRepository
@@ -23,41 +24,45 @@ _agent_service_instance = None
 def initialize_services():
     """
     Initialize all singleton services at application startup.
-    
+
     This should be called from the FastAPI startup event.
     Ensures all services are ready before accepting requests.
-    
+
     Raises:
         Exception: If any service fails to initialize (fail fast)
     """
     global _repository_instance, _llm_service_instance, _agent_service_instance
-    
+
     logger.info("Initializing singleton services...")
-    
+
     try:
         # Initialize repository
         _repository_instance = InMemoryNoteRepository()
         logger.info("✓ Repository initialized")
-        
+
         # Initialize LLM service (legacy Gemini — optional, skipped if no key)
         try:
             from app.services.llm_service import LLMService
+
             _llm_service_instance = LLMService()
             logger.info("✓ LLM service initialized")
         except (ValueError, ConnectionError, ImportError) as e:
             logger.warning(f"Legacy LLM service skipped: {e}")
             _llm_service_instance = None
-        
+
         # Initialize Agent service (depends on repository and LLM service)
         if _llm_service_instance:
             from app.services.agent_service import AgentService
-            _agent_service_instance = AgentService(_repository_instance, _llm_service_instance)
+
+            _agent_service_instance = AgentService(
+                _repository_instance, _llm_service_instance
+            )
             logger.info("✓ Agent service initialized")
         else:
             logger.info("Agent service skipped (LLM service unavailable)")
-        
+
         logger.info("Singleton services initialized!")
-        
+
     except Exception as e:
         logger.error(f"Failed to initialize services: {e}")
         raise
@@ -66,28 +71,28 @@ def initialize_services():
 def shutdown_services():
     """
     Clean up singleton services at application shutdown.
-    
+
     This should be called from the FastAPI shutdown event.
     """
     global _repository_instance, _llm_service_instance, _agent_service_instance
-    
+
     logger.info("Shutting down singleton services...")
-    
+
     # Clean up if needed (for now, just clear references)
     _agent_service_instance = None
     _llm_service_instance = None
     _repository_instance = None
-    
+
     logger.info("Singleton services shut down")
 
 
 def get_repository() -> InMemoryNoteRepository:
     """
     Get the singleton repository instance.
-    
+
     Returns:
         InMemoryNoteRepository: The shared repository instance
-        
+
     Raises:
         RuntimeError: If called before initialize_services()
     """
@@ -103,10 +108,10 @@ def get_repository() -> InMemoryNoteRepository:
 def get_llm_service():
     """
     Get the singleton LLM service instance.
-    
+
     Returns:
         LLMService: The shared LLM service instance
-        
+
     Raises:
         RuntimeError: If called before initialize_services()
     """
@@ -122,10 +127,10 @@ def get_llm_service():
 def get_agent_service():
     """
     Get the singleton Agent service instance.
-    
+
     Returns:
         AgentService: The shared Agent service instance
-        
+
     Raises:
         RuntimeError: If called before initialize_services()
     """
@@ -136,4 +141,3 @@ def get_agent_service():
             "Ensure initialize_services() is called at startup."
         )
     return _agent_service_instance
-

@@ -7,7 +7,9 @@ def _client(api_key: str) -> Mistral:
     return Mistral(api_key=api_key)
 
 
-async def chat(api_key: str, model: str, messages: list[ChatMessage], **kwargs) -> ChatResponse:
+async def chat(
+    api_key: str, model: str, messages: list[ChatMessage], **kwargs
+) -> ChatResponse:
     resp = await _client(api_key).chat.complete_async(
         model=model,
         messages=[{"role": m.role, "content": m.content} for m in messages],
@@ -17,11 +19,18 @@ async def chat(api_key: str, model: str, messages: list[ChatMessage], **kwargs) 
     return ChatResponse(
         content=choice.message.content or "",
         model=resp.model or model,
-        usage={"prompt_tokens": resp.usage.prompt_tokens, "completion_tokens": resp.usage.completion_tokens} if resp.usage else {},
+        usage={
+            "prompt_tokens": resp.usage.prompt_tokens,
+            "completion_tokens": resp.usage.completion_tokens,
+        }
+        if resp.usage
+        else {},
     )
 
 
-async def stream_chat(api_key: str, model: str, messages: list[ChatMessage], **kwargs) -> AsyncIterator[str]:
+async def stream_chat(
+    api_key: str, model: str, messages: list[ChatMessage], **kwargs
+) -> AsyncIterator[str]:
     resp = await _client(api_key).chat.stream_async(
         model=model,
         messages=[{"role": m.role, "content": m.content} for m in messages],

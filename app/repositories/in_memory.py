@@ -2,6 +2,7 @@
 In-Memory Repository Implementation
 Uses Python dictionary for storage - simple but extensible
 """
+
 import logging
 from typing import Optional
 from app.models.note import Note, NoteCreate, NoteUpdate
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 class InMemoryNoteRepository(BaseNoteRepository):
     """
     In-memory implementation of Note Repository using a Python dictionary
-    
+
     Note: Data is lost when the server restarts (as expected for in-memory storage)
     Future: Replace with SupabaseNoteRepository or PostgreSQLNoteRepository
     """
@@ -75,4 +76,3 @@ class InMemoryNoteRepository(BaseNoteRepository):
         count = len(self._storage)
         self._storage.clear()
         logger.info(f"Cleared {count} notes from storage")
-

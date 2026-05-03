@@ -17,14 +17,18 @@ def _to_contents(messages: list[ChatMessage]) -> tuple[str | None, list[types.Co
             system = m.content
         else:
             role = "model" if m.role == "assistant" else "user"
-            contents.append(types.Content(role=role, parts=[types.Part(text=m.content)]))
+            contents.append(
+                types.Content(role=role, parts=[types.Part(text=m.content)])
+            )
     return system, contents
 
 
-async def chat(api_key: str, model: str, messages: list[ChatMessage], **kwargs) -> ChatResponse:
+async def chat(
+    api_key: str, model: str, messages: list[ChatMessage], **kwargs
+) -> ChatResponse:
     client = _client(api_key)
     system, contents = _to_contents(messages)
-    
+
     config = types.GenerateContentConfig(system_instruction=system) if system else None
     response = await client.aio.models.generate_content(
         model=model,
@@ -38,10 +42,12 @@ async def chat(api_key: str, model: str, messages: list[ChatMessage], **kwargs) 
     )
 
 
-async def stream_chat(api_key: str, model: str, messages: list[ChatMessage], **kwargs) -> AsyncIterator[str]:
+async def stream_chat(
+    api_key: str, model: str, messages: list[ChatMessage], **kwargs
+) -> AsyncIterator[str]:
     client = _client(api_key)
     system, contents = _to_contents(messages)
-    
+
     config = types.GenerateContentConfig(system_instruction=system) if system else None
     stream = await client.aio.models.generate_content_stream(
         model=model,
